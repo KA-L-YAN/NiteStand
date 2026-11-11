@@ -27,6 +27,7 @@ import com.nitestand.standbyclock.ui.standby.StandByScreen
 import com.nitestand.standbyclock.ui.standby.WaitingContent
 import com.nitestand.standbyclock.ui.theme.StandByClockTheme
 import com.nitestand.standbyclock.util.isSystemReduceMotion
+import com.nitestand.standbyclock.diagnostics.ActivationTrace
 import com.nitestand.standbyclock.diagnostics.EventLog
 import com.nitestand.standbyclock.lockscreen.StandByNotifications
 import kotlinx.coroutines.Job
@@ -61,6 +62,17 @@ class StandByActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyShowWhenLocked(true)
+        val expectsClock = intent.getBooleanExtra(EXTRA_FROM_LOCK_SCREEN, false) || intent.getBooleanExtra(EXTRA_FORCE, false)
+        if (!intent.getBooleanExtra(EXTRA_FROM_LOCK_SCREEN, false)) {
+            ActivationTrace.begin("Manual launch (${if (intent.getBooleanExtra(EXTRA_FORCE, false)) "preview/tile" else "Start StandBy"})")
+        }
+        if (expectsClock) {
+            // No status/navigation bar flash: the first frame is already immersive black.
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
+        }
         handleLaunchIntent(intent)
         ShortcutManagerCompat.reportShortcutUsed(this, SHORTCUT_ID)
 
@@ -100,6 +112,13 @@ class StandByActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        StandBySession.markResumed()
+        val keyguard = getSystemService(android.app.KeyguardManager::class.java)
+        ActivationTrace.step("Activity resumed (${if (keyguard?.isKeyguardLocked == true) "over lock screen" else "unlocked"})")
+    }
+
     override fun onDestroy() {
         StandBySession.ended(StandBySurface.ACTIVITY)
         super.onDestroy()
@@ -111,7 +130,7 @@ class StandByActivity : ComponentActivity() {
      */
     private fun handleLaunchIntent(intent: Intent) {
         if (intent.getBooleanExtra(EXTRA_FROM_LOCK_SCREEN, false)) {
-            EventLog.log("StandBy opened from lock-screen watcher")
+            ActivationTrace.step("StandBy activity created by automatic launch (turn-screen-on enabled)")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
                 setTurnScreenOn(true)
             } else {

@@ -92,10 +92,11 @@ data class DigitalSpec(
     /** Gap between the minutes and the small column, in em. */
     val smallGap: Float = 0.07f,
     /**
-     * OpenType features. Proportional lining figures by default: a "1" no longer sits in a wide
-     * tabular cell, so "10:41" is evenly spaced. Width changes between minutes are animated.
+     * OpenType features. Tabular lining figures: every digit has the same advance, so a minute
+     * change never shifts the colon or neighbouring digits — the clock is physically stable.
+     * (The layout only changes when the digit count changes, e.g. 9:59 → 10:00 in 12-hour mode.)
      */
-    val features: String = "pnum, lnum",
+    val features: String = "tnum, lnum",
     /** Vertical position of the digit band's centre within the box (0.5 = optical centre). */
     val verticalBias: Float = 0.5f,
     /** Draw the colon as two round dots matched to the digits' stroke instead of the font glyph. */

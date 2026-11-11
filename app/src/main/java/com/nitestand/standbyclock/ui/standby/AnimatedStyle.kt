@@ -30,5 +30,25 @@ fun rememberAnimatedStyle(target: StandByStyle, motion: Motion): StandByStyle {
         val duration = if (nightChange) motion.ms(Motion.NIGHT_MS) else motion.ms(Motion.COLOR_MS)
         progress.animateTo(1f, tween(duration, easing = Motion.Standard))
     }
-    return from.lerpTo(to, progress.value)
+    return if (from.night != to.night) nightPath(from, to, progress.value) else from.lerpTo(to, progress.value)
+}
+
+/**
+ * Day ⇄ night goes through a warm, dimmed middle state instead of a direct white → red blend:
+ * normal → gradual dim → warm amber → muted red (and the reverse when morning comes).
+ */
+internal fun nightPath(from: StandByStyle, to: StandByStyle, p: Float): StandByStyle {
+    val warm = from.lerpTo(to, 0.5f).warmed()
+    return if (p < 0.5f) from.lerpTo(warm, p / 0.5f) else warm.lerpTo(to, (p - 0.5f) / 0.5f)
+}
+
+private val Amber = androidx.compose.ui.graphics.Color(0xFFE08A4E)
+
+private fun StandByStyle.warmed(): StandByStyle {
+    fun w(c: androidx.compose.ui.graphics.Color) =
+        androidx.compose.ui.graphics.lerp(c, Amber.copy(alpha = c.alpha * 0.62f), 0.8f)
+    return copy(
+        primary = w(primary), secondary = w(secondary), tertiary = w(tertiary), accent = w(accent),
+        retro = w(retro), hands = w(hands), gradient = gradient.map(::w),
+    )
 }

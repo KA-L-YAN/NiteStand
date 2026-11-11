@@ -22,6 +22,9 @@ data class Motion(val reduce: Boolean = false, val night: Boolean = false) {
         /** Entrances: fast start, long soft landing. */
         val EmphasizedDecelerate: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 
+        /** StandBy entrance: a slow, even start ("the display is waking") and a long, soft landing. */
+        val Wake: Easing = CubicBezierEasing(0.32f, 0f, 0.12f, 1f)
+
         /** General state changes. */
         val Standard: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
@@ -37,7 +40,8 @@ data class Motion(val reduce: Boolean = false, val night: Boolean = false) {
         const val FACE_MS = 650
         const val COLOR_MS = 450
         const val NIGHT_MS = 2_500
-        const val ENTER_MS = 1_100
+        const val ENTER_MS = 1_150
+        const val ENTER_DELAY_MS = 90
         const val EXIT_MS = 380
         const val BURN_IN_MS = 8_000
     }

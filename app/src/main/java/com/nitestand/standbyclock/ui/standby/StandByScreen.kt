@@ -50,6 +50,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
@@ -63,7 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import com.nitestand.standbyclock.R
 import com.nitestand.standbyclock.clock.ClockFaceCatalog
-import com.nitestand.standbyclock.clock.ClockTheme
+import com.nitestand.standbyclock.diagnostics.ActivationTrace
 import com.nitestand.standbyclock.settings.StandBySettings
 import com.nitestand.standbyclock.standby.StandByUiState
 import com.nitestand.standbyclock.ui.clock.ClockFont
@@ -81,6 +83,25 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sign
+
+private enum class Surface { BLANK, ACTIVE, WAITING }
+
+private const val INACTIVE_HOLD_MS = 800L
+
+/** The entrance choreography as pure functions of one progress value (unit tested). */
+object EntranceTimeline {
+    /** Clock opacity: invisible for the first 5 % (black hold), then a soft ease in. */
+    fun clockAlpha(e: Float): Float = ((e - 0.05f) / 0.75f).coerceIn(0f, 1f)
+
+    /** A barely perceptible settle; never "pops" from a small size. */
+    fun clockScale(e: Float): Float = 0.975f + 0.025f * e
+
+    /** The clock condenses out of a soft blur; also blurs slightly on exit. */
+    fun blurDp(e: Float, exit: Float): Float = (1f - e) * 14f + exit * 6f
+
+    /** Secondary information starts once the clock has mostly settled. */
+    fun secondary(e: Float): Float = ((e - 0.62f) / 0.38f).coerceIn(0f, 1f)
+}
 
 object StandByTestTags {
     const val ROOT = "standby_root"
@@ -134,12 +155,29 @@ fun StandByScreen(
                 .background(Color.Black)
                 .testTag(StandByTestTags.ROOT),
         ) {
+            // While the activation state is still settling (first orientation reading after launch),
+            // stay black instead of flashing the waiting screen.
+            var showInactive by remember { mutableStateOf(false) }
+            LaunchedEffect(active) {
+                showInactive = false
+                if (!active) {
+                    delay(INACTIVE_HOLD_MS)
+                    showInactive = true
+                }
+            }
+            val surface = when {
+                active -> Surface.ACTIVE
+                showInactive -> Surface.WAITING
+                else -> Surface.BLANK
+            }
             Crossfade(
-                targetState = active,
+                targetState = surface,
                 animationSpec = tween(motion.ms(500), easing = Motion.Standard),
                 label = "standbyActive",
-            ) { isActive ->
-                if (isActive) {
+            ) { target ->
+                if (target == Surface.BLANK) {
+                    Box(Modifier.fillMaxSize())
+                } else if (target == Surface.ACTIVE) {
                     ActiveStage(
                         state = state,
                         sources = sources,
@@ -175,12 +213,14 @@ private fun ActiveStage(
     val style = rememberAnimatedStyle(targetStyle, motion)
     val drift = rememberBurnInDrift(settings.burnInProtection, settings.burnInIntervalSeconds, motion)
 
-    // Entrance: the stage settles in (fade + 0.94→1 scale), secondary layers follow.
+    // Entrance — one timeline (≈1.2 s): black hold → the clock condenses out of a soft blur with a
+    // barely perceptible 0.975→1 settle → secondary information follows → stable.
     val entrance = remember { Animatable(if (motion.reduce) 1f else 0f) }
     LaunchedEffect(Unit) {
-        entrance.animateTo(1f, tween(motion.ms(Motion.ENTER_MS), delayMillis = motion.ms(120), easing = Motion.EmphasizedDecelerate))
+        ActivationTrace.stepOnce("StandBy renderer active (clock composed)")
+        entrance.animateTo(1f, tween(motion.ms(Motion.ENTER_MS), delayMillis = motion.ms(Motion.ENTER_DELAY_MS), easing = Motion.Wake))
     }
-    val secondaryAlpha: () -> Float = { ((entrance.value - 0.45f) / 0.55f).coerceIn(0f, 1f) * (1f - exitProgress()) }
+    val secondaryAlpha: () -> Float = { EntranceTimeline.secondary(entrance.value) * (1f - exitProgress()) }
 
     val pageCount = if (settings.showInfoPage) 2 else 1
     val pager = rememberPagerState(pageCount = { pageCount })
@@ -227,12 +267,19 @@ private fun ActiveStage(
                     .graphicsLayer {
                         val e = entrance.value
                         val x = exitProgress()
-                        alpha = (e * (1f - x)).coerceIn(0f, 1f)
-                        val scale = (0.94f + 0.06f * e) * (1f - 0.03f * x)
+                        alpha = (EntranceTimeline.clockAlpha(e) * (1f - x)).coerceIn(0f, 1f)
+                        val scale = EntranceTimeline.clockScale(e) * (1f - 0.02f * x)
                         scaleX = scale
                         scaleY = scale
+                        // The drift is independent of every transition: a pure translation of the stage.
                         translationX = drift.dx
                         translationY = drift.dy
+                        val blur = EntranceTimeline.blurDp(e, x) * density
+                        renderEffect = if (blur > 0.5f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                            BlurEffect(blur, blur, TileMode.Decal)
+                        } else {
+                            null
+                        }
                     },
             ) {
                 if (pageCount == 1) {
