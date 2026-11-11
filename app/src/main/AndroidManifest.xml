@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        StandBy Clock requests NO runtime or install-time permissions:
+        - battery state: sticky ACTION_BATTERY_CHANGED broadcast (no permission)
+        - orientation: accelerometer / gravity sensor (no permission at <= 200 Hz)
+        - next alarm: AlarmManager.getNextAlarmClock() (no permission)
+        - keep screen on: FLAG_KEEP_SCREEN_ON window flag (no WAKE_LOCK needed)
+        - brightness: per-window screenBrightness override (no WRITE_SETTINGS needed)
+        The two android:permission attributes below protect our services so that only the
+        system can bind them; they are not permissions requested by the app.
+    -->
+
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
+    <application
+        android:name=".StandByClockApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.StandByClock"
+        tools:targetApi="37">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.StandByClock">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Mode A: StandBy activity. Orientation is requested at runtime (sensorLandscape while active). -->
+        <activity
+            android:name=".standby.StandByActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|navigation"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="@string/standby_activity_label"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:taskAffinity="${applicationId}.standby"
+            android:theme="@style/Theme.StandByClock.StandBy" />
+
+        <!-- Mode B: Android screen saver (Dream). -->
+        <service
+            android:name=".standby.StandByDreamService"
+            android:exported="true"
+            android:label="@string/dream_label"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.dream"
+                android:resource="@xml/standby_dream" />
+        </service>
+
+        <!-- Quick Settings tile to open StandBy. -->
+        <service
+            android:name=".standby.StandByTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_standby"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="false" />
+        </service>
+    </application>
+</manifest>
