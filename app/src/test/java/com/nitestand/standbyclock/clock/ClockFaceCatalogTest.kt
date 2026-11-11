@@ -19,9 +19,15 @@ class ClockFaceCatalogTest {
 
     @Test
     fun `collection is complete`() {
-        assertTrue(ClockFaceCatalog.byCategory(FaceCategory.DIGITAL).size >= 5)
-        assertTrue(ClockFaceCatalog.byCategory(FaceCategory.ANALOG).size >= 4)
-        assertTrue(ClockFaceCatalog.byCategory(FaceCategory.EXPRESSIVE).size >= 5)
+        // Digital: large minimal, large rounded, colorful, gradient, minimal, world, date-focused.
+        assertTrue(ClockFaceCatalog.byCategory(FaceCategory.DIGITAL).size >= 7)
+        // Analog: classic, minimal, modern, elegant, large hands, thin line.
+        assertTrue(ClockFaceCatalog.byCategory(FaceCategory.ANALOG).size >= 6)
+        // Decorative: retro, geometric, typography-focused (+ hairline, ambient).
+        assertTrue(ClockFaceCatalog.byCategory(FaceCategory.DECORATIVE).size >= 3)
+        // Gallery order follows the enum (swipe order) within each category.
+        val ordered = FaceCategory.entries.flatMap { c -> ClockFaceCatalog.byCategory(c).map { it.id } }
+        assertEquals(ClockTheme.entries.toList(), ordered)
         assertEquals(ClockTheme.DIGITAL_LARGE, ClockTheme.DEFAULT)
         assertEquals(ClockTheme.DIGITAL_LARGE, StandBySettings().clockTheme)
     }

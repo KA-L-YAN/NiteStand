@@ -1,6 +1,8 @@
 package com.nitestand.standbyclock.ui
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
@@ -54,11 +56,13 @@ class ScreenshotTest {
     private val context = ApplicationProvider.getApplicationContext<StandByClockApp>()
     private val fixedTime = ZonedDateTime.of(2026, 11, 11, 22, 42, 37, 0, ZoneId.systemDefault())
 
+    private var nowMillis = 0L
+
     private val sources = WidgetDataSources(
         battery = flowOf(BatterySnapshot(85, ChargingStatus.CHARGING, PowerSource.AC)),
         nextAlarm = flowOf(NextAlarm(fixedTime.plusMinutes(37).plusDays(1).toInstant())),
         weather = LocalPlaceholderWeatherProvider(),
-        ticker = ClockTicker(null) { fixedTime.toInstant().toEpochMilli() },
+        ticker = ClockTicker(null) { if (nowMillis == 0L) fixedTime.toInstant().toEpochMilli() else nowMillis },
         timeFormat = TimeFormatPreference(context),
     )
 
@@ -209,4 +213,70 @@ class ScreenshotTest {
             hasOrientationSensor = true, onUpdate = {}, onBack = {}, onOpenScreenSaverSettings = {},
         )
     }
+
+    /** Frames of the minute-change glyph transition (22:42 → 22:43) on the default face. */
+    @Test
+    @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
+    fun minuteTransitionFrames() {
+        val settings = StandBySettings(hourFormat = com.nitestand.standbyclock.clock.HourFormat.TWENTY_FOUR_HOUR, burnInProtection = false)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            StandByClockTheme {
+                StandByScreen(StandByUiState(activation(StandByState.ACTIVE), settings, false), sources, {}, {}, systemReduceMotion = false) {}
+            }
+        }
+        compose.mainClock.advanceTimeBy(3_000)
+        save("transition_0_before")
+        nowMillis = fixedTime.plusSeconds(23).toInstant().toEpochMilli()
+        // The ticker's 23 s wait started at t = 0; 3 s have passed, so the tick lands at ~23.015 s.
+        compose.mainClock.advanceTimeBy(20_000)
+        compose.mainClock.advanceTimeBy(250)
+        save("transition_1_mid")
+        compose.mainClock.advanceTimeBy(1_000)
+        save("transition_2_after")
+    }
+
+    private fun save(name: String) {
+        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        val dir = File("build/screenshots").apply { mkdirs() }
+        File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    @Test
+    @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
+    fun infoPage() = capture("info_page") {
+        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
+            com.nitestand.standbyclock.ui.standby.InfoPagePreview(
+                StandBySettings(showWeatherWidget = true),
+                com.nitestand.standbyclock.ui.theme.StandByStyle.forSettings(StandBySettings()),
+                sources,
+            )
+        }
+    }
+
+    /** TimeText alone: the minute-change transition at fixed points of its 700 ms timeline. */
+    @Test
+    @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
+    fun glyphTransitionTimeline() {
+        val formatter = com.nitestand.standbyclock.clock.ClockFormatter(java.util.Locale.US, true, false)
+        val text = androidx.compose.runtime.mutableStateOf(formatter.format(fixedTime))
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            com.nitestand.standbyclock.ui.clock.TimeText(
+                text.value,
+                com.nitestand.standbyclock.ui.clock.DigitalSpec(com.nitestand.standbyclock.ui.clock.ClockFont.ROUNDED, 300, heightFraction = 0.76f),
+                com.nitestand.standbyclock.ui.clock.TimeColors(androidx.compose.ui.graphics.Color.White, androidx.compose.ui.graphics.Color.Gray),
+                androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black),
+            )
+        }
+        compose.mainClock.advanceTimeBy(500)
+        text.value = formatter.format(fixedTime.plusMinutes(1))
+        for (t in listOf(16L, 120L, 250L, 400L, 900L)) {
+            compose.mainClock.advanceTimeBy(if (t == 16L) 16L else t - previousT)
+            previousT = t
+            save("glyph_t$t")
+        }
+    }
+
+    private var previousT = 16L
 }

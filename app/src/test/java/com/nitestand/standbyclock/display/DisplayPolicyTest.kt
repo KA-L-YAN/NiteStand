@@ -31,6 +31,7 @@ class DisplayPolicyTest {
             assertEquals(BrightnessPolicy.NIGHT_BRIGHTNESS, BrightnessPolicy.windowBrightness(level, true), 0f)
         }
         assertTrue(BrightnessPolicy.NIGHT_BRIGHTNESS in 0.001f..low)
+        assertEquals(BrightnessPolicy.NIGHT_BRIGHTNESS, BrightnessPolicy.windowBrightness(BrightnessLevel.NIGHT, false), 0f)
     }
 
     @Test
@@ -76,5 +77,12 @@ class DisplayPolicyTest {
         val shifter = BurnInShifter(smallRadiusDp = 6, largeRadiusDp = 14, maxStepDp = 3, repositionEvery = 5, random = Random(7))
         val positions = List(1_000) { shifter.next() }
         assertTrue(positions.any { abs(it.xDp) > 6 || abs(it.yDp) > 6 })
+    }
+
+    @Test
+    fun `burn-in path is deterministic`() {
+        val a = BurnInShifter()
+        val b = BurnInShifter()
+        repeat(50) { assertEquals(a.next(), b.next()) }
     }
 }

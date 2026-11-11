@@ -53,11 +53,12 @@ class SettingsRepositoryTest {
             worldPrimaryCity = "tokyo",
             worldSecondaryCity = "none",
             showPanel = true,
+            showInfoPage = false,
             showDateWidget = false,
             showBatteryWidget = false,
             showAlarmWidget = false,
             showWeatherWidget = true,
-            brightness = BrightnessLevel.HIGH,
+            brightness = BrightnessLevel.NIGHT,
             nightMode = NightMode.ON,
             nightStartMinutes = 21 * 60,
             nightEndMinutes = 6 * 60 + 30,
@@ -75,7 +76,7 @@ class SettingsRepositoryTest {
         val repo = SettingsRepository(InMemoryDataStore())
         repo.update { it.copy(clockTheme = it.clockTheme.cycle(1)) }
         repo.update { it.copy(clockTheme = it.clockTheme.cycle(1)) }
-        assertEquals(ClockTheme.MINIMAL, repo.current().clockTheme)
+        assertEquals(ClockTheme.BUBBLE, repo.current().clockTheme)
     }
 
     @Test

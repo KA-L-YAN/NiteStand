@@ -75,7 +75,7 @@ class ClockFormatterTest {
 
     @Test
     fun `theme cycling wraps around`() {
-        assertEquals(ClockTheme.DIGITAL_COLOR, ClockTheme.DIGITAL_LARGE.cycle(1))
+        assertEquals(ClockTheme.CLASSIC, ClockTheme.DIGITAL_LARGE.cycle(1))
         assertEquals(ClockTheme.AMBIENT, ClockTheme.DIGITAL_LARGE.cycle(-1))
         assertEquals(ClockTheme.DIGITAL_LARGE, ClockTheme.AMBIENT.cycle(1))
     }
