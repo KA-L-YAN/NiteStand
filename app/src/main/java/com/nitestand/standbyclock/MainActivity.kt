@@ -54,6 +54,7 @@ import com.nitestand.standbyclock.standby.StandBySession
 import com.nitestand.standbyclock.ui.MainViewModel
 import com.nitestand.standbyclock.ui.diagnostics.DiagnosticsActions
 import com.nitestand.standbyclock.ui.diagnostics.DiagnosticsScreen
+import com.nitestand.standbyclock.ui.gallery.ClockGalleryScreen
 import com.nitestand.standbyclock.ui.settings.SettingsScreen
 import com.nitestand.standbyclock.ui.setup.SetupScreen
 import com.nitestand.standbyclock.ui.theme.StandByClockTheme
@@ -65,7 +66,7 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels { MainViewModel.factory(appContainer) }
 
-    private enum class Screen { SETUP, SETTINGS, DIAGNOSTICS }
+    private enum class Screen { SETUP, SETTINGS, CLOCK_FACES, DIAGNOSTICS }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -79,6 +80,7 @@ class MainActivity : ComponentActivity() {
                 val battery by viewModel.battery.collectAsStateWithLifecycle()
                 var screen by rememberSaveable { mutableStateOf(Screen.SETUP) }
                 var showFsiDialog by rememberSaveable { mutableStateOf(false) }
+                var galleryReturn by rememberSaveable { mutableStateOf(Screen.SETTINGS) }
                 val current = settings ?: return@StandByClockTheme
 
                 // Keep the opt-in lock-screen watcher service in sync with the settings.
@@ -101,7 +103,11 @@ class MainActivity : ComponentActivity() {
                 }
 
                 BackHandler(enabled = screen != Screen.SETUP) {
-                    screen = if (screen == Screen.DIAGNOSTICS) Screen.SETTINGS else Screen.SETUP
+                    screen = when (screen) {
+                        Screen.DIAGNOSTICS -> Screen.SETTINGS
+                        Screen.CLOCK_FACES -> galleryReturn
+                        else -> Screen.SETUP
+                    }
                 }
 
                 AnimatedContent(
@@ -123,6 +129,10 @@ class MainActivity : ComponentActivity() {
                             onOpenScreenSaverSettings = { openScreenSaverSettings() },
                             onOpenSettings = { screen = Screen.SETTINGS },
                             onOpenDiagnostics = { screen = Screen.DIAGNOSTICS },
+                            onOpenClockFaces = {
+                                galleryReturn = Screen.SETUP
+                                screen = Screen.CLOCK_FACES
+                            },
                         )
                         Screen.SETTINGS -> SettingsScreen(
                             settings = current,
@@ -132,6 +142,17 @@ class MainActivity : ComponentActivity() {
                             onBack = { screen = Screen.SETUP },
                             onOpenScreenSaverSettings = { openScreenSaverSettings() },
                             onOpenDiagnostics = { screen = Screen.DIAGNOSTICS },
+                            onOpenClockFaces = {
+                                galleryReturn = Screen.SETTINGS
+                                screen = Screen.CLOCK_FACES
+                            },
+                        )
+                        Screen.CLOCK_FACES -> ClockGalleryScreen(
+                            settings = current,
+                            sources = appContainer.widgetDataSources,
+                            onUpdate = viewModel::update,
+                            onBack = { screen = galleryReturn },
+                            onPreviewFullScreen = { startActivity(StandByActivity.intent(this@MainActivity, force = true)) },
                         )
                         Screen.DIAGNOSTICS -> DiagnosticsRoute(current, onBack = { screen = Screen.SETTINGS })
                     }

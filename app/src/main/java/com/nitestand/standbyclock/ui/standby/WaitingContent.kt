@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nitestand.standbyclock.R
+import com.nitestand.standbyclock.clock.ClockPalette
 import com.nitestand.standbyclock.clock.ClockTheme
 import com.nitestand.standbyclock.standby.StandByState
 import com.nitestand.standbyclock.standby.StandByUiState
@@ -66,7 +67,7 @@ fun WaitingContent(
         else -> R.string.waiting_landscape_title to R.string.waiting_landscape_body
     }
     val canStart = activation.state == StandByState.READY || !activation.mode.isAutomatic
-    val dimStyle = StandByStyle.create(settings.accent, ClockTheme.MINIMAL, night = state.nightActive, reduceMotion = true)
+    val dimStyle = StandByStyle.create(ClockTheme.MINIMAL, ClockPalette.WHITE, if (state.nightActive) 1f else 0f, reduceMotion = true)
 
     val clock: @Composable (Modifier) -> Unit = { modifier ->
         Box(modifier) {
@@ -176,7 +177,7 @@ private fun ConditionRow(label: Int, met: Boolean) {
 /** Dream fallback while not in landscape: tiny and dim; the dream ends itself after a grace period. */
 @Composable
 fun DreamIdleContent(state: StandByUiState, sources: WidgetDataSources) {
-    val style = StandByStyle.create(state.settings.accent, ClockTheme.AMBIENT, state.nightActive, reduceMotion = true)
+    val style = StandByStyle.create(ClockTheme.AMBIENT, ClockPalette.WHITE, if (state.nightActive) 1f else 0f, reduceMotion = true)
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

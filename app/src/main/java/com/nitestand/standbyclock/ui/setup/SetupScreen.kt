@@ -69,6 +69,7 @@ fun SetupScreen(
     onOpenScreenSaverSettings: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDiagnostics: () -> Unit = {},
+    onOpenClockFaces: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -103,8 +104,13 @@ fun SetupScreen(
                         Button(onClick = onStartStandBy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                             Text(stringResource(R.string.action_start_standby))
                         }
-                        OutlinedButton(onClick = onPreview, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Text(stringResource(R.string.action_preview))
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(onClick = onPreview, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text(stringResource(R.string.action_preview))
+                            }
+                            OutlinedButton(onClick = onOpenClockFaces, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text(stringResource(R.string.gallery_title))
+                            }
                         }
                     }
                 }
@@ -142,9 +148,7 @@ fun SetupScreen(
 
 @Composable
 private fun PreviewCard(settings: StandBySettings, sources: WidgetDataSources, onPreview: () -> Unit) {
-    val style = remember(settings.accent, settings.clockTheme) {
-        StandByStyle.create(settings.accent, settings.clockTheme, night = false, reduceMotion = true)
-    }
+    val style = remember(settings) { StandByStyle.forSettings(settings, reduceMotion = true) }
     val previewLabel = stringResource(R.string.action_preview)
     Box(
         Modifier

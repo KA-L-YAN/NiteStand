@@ -152,7 +152,33 @@ class StandByActivity : ComponentActivity() {
         }
         if (brightness != appliedBrightness) {
             appliedBrightness = brightness
-            window.attributes = window.attributes.apply { screenBrightness = brightness }
+            rampBrightness(brightness, instant = state.settings.reduceMotion)
+        }
+    }
+
+    private var brightnessJob: Job? = null
+
+    /**
+     * Moves the window brightness override to [target] over ~1.5 s (e.g. into night mode) instead
+     * of jumping. Only this window is affected; the system brightness is never changed, and the
+     * override disappears with the window when StandBy exits.
+     */
+    private fun rampBrightness(target: Float, instant: Boolean) {
+        brightnessJob?.cancel()
+        val start = window.attributes.screenBrightness
+        fun apply(value: Float) {
+            window.attributes = window.attributes.apply { screenBrightness = value }
+        }
+        if (instant || start < 0f || target < 0f) {
+            apply(target)
+            return
+        }
+        brightnessJob = lifecycleScope.launch {
+            val steps = 15
+            for (i in 1..steps) {
+                apply(start + (target - start) * i / steps)
+                delay(100)
+            }
         }
     }
 

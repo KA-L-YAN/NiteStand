@@ -57,13 +57,12 @@ import androidx.compose.ui.unit.dp
 import com.nitestand.standbyclock.BuildConfig
 import com.nitestand.standbyclock.R
 import com.nitestand.standbyclock.clock.ClockFormatter
-import com.nitestand.standbyclock.clock.ClockTheme
+import com.nitestand.standbyclock.clock.DateStyle
 import com.nitestand.standbyclock.clock.HourFormat
 import com.nitestand.standbyclock.clock.TimeFormatPreference
 import com.nitestand.standbyclock.display.BrightnessLevel
 import com.nitestand.standbyclock.display.NightMode
 import com.nitestand.standbyclock.sensors.OrientationSensitivity
-import com.nitestand.standbyclock.settings.AccentColor
 import com.nitestand.standbyclock.settings.StandBySettings
 import com.nitestand.standbyclock.standby.ActivationMode
 import com.nitestand.standbyclock.ui.components.description
@@ -81,6 +80,7 @@ fun SettingsScreen(
     onOpenScreenSaverSettings: () -> Unit,
     onToggleWatcher: (Boolean) -> Unit = { enable -> onUpdate { it.copy(lockScreenWatcher = enable) } },
     onOpenDiagnostics: () -> Unit = {},
+    onOpenClockFaces: () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
@@ -107,7 +107,7 @@ fun SettingsScreen(
                 Modifier.widthIn(max = 720.dp).fillMaxWidth(),
                 contentPadding = PaddingValues(bottom = 32.dp),
             ) {
-                settingsContent(settings, hasOrientationSensor, onUpdate, onOpenScreenSaverSettings, onToggleWatcher, onOpenDiagnostics)
+                settingsContent(settings, hasOrientationSensor, onUpdate, onOpenScreenSaverSettings, onToggleWatcher, onOpenDiagnostics, onOpenClockFaces)
             }
         }
     }
@@ -120,6 +120,7 @@ private fun LazyListScope.settingsContent(
     onOpenScreenSaverSettings: () -> Unit,
     onToggleWatcher: (Boolean) -> Unit,
     onOpenDiagnostics: () -> Unit,
+    onOpenClockFaces: () -> Unit,
 ) {
     // ---------------------------------------------------------------- General
     item { SectionHeader(R.string.section_general) }
@@ -200,17 +201,32 @@ private fun LazyListScope.settingsContent(
     // ---------------------------------------------------------------- Clock
     item { SectionHeader(R.string.section_clock) }
     item {
-        ChoiceRow(R.string.pref_clock_theme, ClockTheme.entries, s.clockTheme, { it.label() }) { v ->
-            update { it.copy(clockTheme = v) }
-        }
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.gallery_title)) },
+            supportingContent = {
+                Text(s.clockTheme.label(), color = MaterialTheme.colorScheme.primary)
+            },
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+            modifier = Modifier.heightIn(min = 56.dp).selectable(selected = false, role = Role.Button, onClick = onOpenClockFaces),
+        )
     }
     item {
         ChoiceRow(R.string.pref_hour_format, HourFormat.entries, s.hourFormat, { it.label() }) { v ->
             update { it.copy(hourFormat = v) }
         }
     }
+    item {
+        SwitchRow(R.string.pref_show_am_pm, R.string.pref_show_am_pm_summary, s.showAmPm, enabled = s.hourFormat != HourFormat.TWENTY_FOUR_HOUR) { v ->
+            update { it.copy(showAmPm = v) }
+        }
+    }
     item { SwitchRow(R.string.pref_show_seconds, R.string.pref_show_seconds_summary, s.showSeconds) { v -> update { it.copy(showSeconds = v) } } }
-    item { SwitchRow(R.string.pref_show_date, null, s.showDate) { v -> update { it.copy(showDate = v) } } }
+    item { SwitchRow(R.string.pref_show_date, R.string.pref_show_date_summary, s.showDate) { v -> update { it.copy(showDate = v) } } }
+    item {
+        ChoiceRow(R.string.pref_date_style, DateStyle.entries, s.dateStyle, { it.label() }, enabled = s.showDate) { v ->
+            update { it.copy(dateStyle = v) }
+        }
+    }
 
     // ---------------------------------------------------------------- Widgets
     item { SectionHeader(R.string.section_widgets) }
@@ -251,9 +267,6 @@ private fun LazyListScope.settingsContent(
         }
     }
     item {
-        ChoiceRow(R.string.pref_accent, AccentColor.entries, s.accent, { it.label() }) { v -> update { it.copy(accent = v) } }
-    }
-    item {
         SwitchRow(R.string.pref_reduce_motion, R.string.pref_reduce_motion_summary, s.reduceMotion) { v -> update { it.copy(reduceMotion = v) } }
     }
 
@@ -290,6 +303,7 @@ private fun LazyListScope.settingsContent(
             modifier = Modifier.selectable(selected = false, role = Role.Button, onClick = onOpenDiagnostics),
         )
     }
+    item { LicensesRow() }
     item {
         ListItem(
             headlineContent = { Text(stringResource(R.string.about_version)) },
@@ -427,6 +441,32 @@ private fun TimeRow(title: Int, minutes: Int, hourFormat: HourFormat, enabled: B
                 }) { Text(stringResource(R.string.action_ok)) }
             },
             dismissButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+}
+
+/** Shows the SIL Open Font License texts of the bundled fonts (required attribution). */
+@Composable
+private fun LicensesRow() {
+    val context = LocalContext.current
+    var open by rememberSaveable { mutableStateOf(false) }
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.licenses_title)) },
+        supportingContent = { Text(stringResource(R.string.licenses_summary)) },
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+        modifier = Modifier.heightIn(min = 56.dp).selectable(selected = false, role = Role.Button) { open = true },
+    )
+    if (open) {
+        val text = remember {
+            listOf("OFL-Nunito.txt", "OFL-Outfit.txt", "OFL-PlayfairDisplay.txt").joinToString("\n\n────────\n\n") { name ->
+                runCatching { context.assets.open("licenses/$name").bufferedReader().use { it.readText() } }.getOrDefault(name)
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(stringResource(R.string.licenses_title)) },
+            text = { Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
+            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_ok)) } },
         )
     }
 }

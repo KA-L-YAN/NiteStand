@@ -2,6 +2,7 @@ package com.nitestand.standbyclock.ui.standby
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -45,7 +46,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nitestand.standbyclock.R
-import com.nitestand.standbyclock.clock.ClockTheme
+import com.nitestand.standbyclock.clock.ClockFaceCatalog
 import com.nitestand.standbyclock.settings.StandBySettings
 import com.nitestand.standbyclock.standby.StandByUiState
 import com.nitestand.standbyclock.ui.theme.StandByStyle
@@ -82,8 +83,15 @@ fun StandByScreen(
     val settings = state.settings
     val active = state.activation.isActive
     val reduceMotion = settings.reduceMotion || systemReduceMotion
-    val style = remember(settings.accent, settings.clockTheme, state.nightActive, reduceMotion) {
-        StandByStyle.create(settings.accent, settings.clockTheme, state.nightActive, reduceMotion)
+    // Night mode fades in/out over a few seconds instead of switching abruptly.
+    val nightFraction by animateFloatAsState(
+        targetValue = if (state.nightActive) 1f else 0f,
+        animationSpec = if (reduceMotion) snap() else tween(durationMillis = 2_500),
+        label = "nightFraction",
+    )
+    val palette = ClockFaceCatalog.paletteFor(settings)
+    val style = remember(settings.clockTheme, palette, nightFraction, reduceMotion) {
+        StandByStyle.create(settings.clockTheme, palette, nightFraction, reduceMotion)
     }
 
     val exit by rememberUpdatedState(onExit)
@@ -148,8 +156,8 @@ private fun ActiveStandBy(
     modifier: Modifier = Modifier,
 ) {
     val offset = rememberBurnInOffset(settings.burnInProtection, settings.burnInIntervalSeconds, style.reduceMotion)
-    // The ambient design is intentionally clock-only: fewer lit pixels at night.
-    val panels = if (settings.clockTheme == ClockTheme.AMBIENT) emptyList() else WidgetRegistry.enabledPanelWidgets(settings)
+    // Some faces (ambient, world, calendar) are intentionally clock-only.
+    val panels = if (!ClockFaceCatalog.spec(settings.clockTheme).allowsPanel) emptyList() else WidgetRegistry.enabledPanelWidgets(settings)
 
     BoxWithConstraints(
         modifier

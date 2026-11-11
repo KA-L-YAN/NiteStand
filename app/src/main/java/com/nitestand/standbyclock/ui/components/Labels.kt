@@ -5,24 +5,84 @@ import androidx.compose.ui.res.stringResource
 import com.nitestand.standbyclock.R
 import com.nitestand.standbyclock.charging.BatterySnapshot
 import com.nitestand.standbyclock.charging.ChargingStatus
+import com.nitestand.standbyclock.clock.ClockPalette
 import com.nitestand.standbyclock.clock.ClockTheme
+import com.nitestand.standbyclock.clock.DateStyle
+import com.nitestand.standbyclock.clock.FaceCategory
 import com.nitestand.standbyclock.clock.HourFormat
 import com.nitestand.standbyclock.display.BrightnessLevel
 import com.nitestand.standbyclock.display.NightMode
 import com.nitestand.standbyclock.sensors.OrientationSensitivity
-import com.nitestand.standbyclock.settings.AccentColor
 import com.nitestand.standbyclock.standby.ActivationMode
 
 @Composable
 fun ClockTheme.label(): String = stringResource(
     when (this) {
-        ClockTheme.CLASSIC -> R.string.theme_classic
-        ClockTheme.MINIMAL -> R.string.theme_minimal
-        ClockTheme.RETRO -> R.string.theme_retro
-        ClockTheme.ANALOG -> R.string.theme_analog
-        ClockTheme.AMBIENT -> R.string.theme_ambient
+        ClockTheme.DIGITAL_LARGE -> R.string.face_digital_large
+        ClockTheme.DIGITAL_COLOR -> R.string.face_digital_color
+        ClockTheme.MINIMAL -> R.string.face_minimal
+        ClockTheme.CLASSIC -> R.string.face_classic
+        ClockTheme.WORLD -> R.string.face_world
+        ClockTheme.ANALOG -> R.string.face_analog
+        ClockTheme.ANALOG_MINIMAL -> R.string.face_analog_minimal
+        ClockTheme.ANALOG_MODERN -> R.string.face_analog_modern
+        ClockTheme.ANALOG_ELEGANT -> R.string.face_analog_elegant
+        ClockTheme.BUBBLE -> R.string.face_bubble
+        ClockTheme.SERIF -> R.string.face_serif
+        ClockTheme.LINE -> R.string.face_line
+        ClockTheme.CALENDAR -> R.string.face_calendar
+        ClockTheme.RETRO -> R.string.face_retro
+        ClockTheme.AMBIENT -> R.string.face_ambient
     },
 )
+
+@Composable
+fun ClockTheme.description(): String = stringResource(
+    when (this) {
+        ClockTheme.DIGITAL_LARGE -> R.string.face_digital_large_desc
+        ClockTheme.DIGITAL_COLOR -> R.string.face_digital_color_desc
+        ClockTheme.MINIMAL -> R.string.face_minimal_desc
+        ClockTheme.CLASSIC -> R.string.face_classic_desc
+        ClockTheme.WORLD -> R.string.face_world_desc
+        ClockTheme.ANALOG -> R.string.face_analog_desc
+        ClockTheme.ANALOG_MINIMAL -> R.string.face_analog_minimal_desc
+        ClockTheme.ANALOG_MODERN -> R.string.face_analog_modern_desc
+        ClockTheme.ANALOG_ELEGANT -> R.string.face_analog_elegant_desc
+        ClockTheme.BUBBLE -> R.string.face_bubble_desc
+        ClockTheme.SERIF -> R.string.face_serif_desc
+        ClockTheme.LINE -> R.string.face_line_desc
+        ClockTheme.CALENDAR -> R.string.face_calendar_desc
+        ClockTheme.RETRO -> R.string.face_retro_desc
+        ClockTheme.AMBIENT -> R.string.face_ambient_desc
+    },
+)
+
+@Composable
+fun FaceCategory.label(): String = stringResource(
+    when (this) {
+        FaceCategory.DIGITAL -> R.string.category_digital
+        FaceCategory.ANALOG -> R.string.category_analog
+        FaceCategory.EXPRESSIVE -> R.string.category_expressive
+    },
+)
+
+@Composable
+fun ClockPalette.label(): String = stringResource(
+    when (this) {
+        ClockPalette.WHITE -> R.string.palette_white
+        ClockPalette.WARM_WHITE -> R.string.palette_warm_white
+        ClockPalette.SOFT_ORANGE -> R.string.palette_orange
+        ClockPalette.YELLOW -> R.string.palette_yellow
+        ClockPalette.GREEN -> R.string.palette_green
+        ClockPalette.BLUE -> R.string.palette_blue
+        ClockPalette.PURPLE -> R.string.palette_purple
+        ClockPalette.PINK -> R.string.palette_pink
+        ClockPalette.RED -> R.string.palette_red
+    },
+)
+
+@Composable
+fun DateStyle.label(): String = stringResource(if (this == DateStyle.LONG) R.string.date_style_long else R.string.date_style_short)
 
 @Composable
 fun HourFormat.label(): String = stringResource(
@@ -82,17 +142,6 @@ fun NightMode.label(): String = stringResource(
         NightMode.OFF -> R.string.night_off
         NightMode.ON -> R.string.night_on
         NightMode.SCHEDULED -> R.string.night_scheduled
-    },
-)
-
-@Composable
-fun AccentColor.label(): String = stringResource(
-    when (this) {
-        AccentColor.WHITE -> R.string.accent_white
-        AccentColor.WARM -> R.string.accent_warm
-        AccentColor.RED -> R.string.accent_red
-        AccentColor.BLUE -> R.string.accent_blue
-        AccentColor.MINT -> R.string.accent_mint
     },
 )
 
