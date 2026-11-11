@@ -260,8 +260,9 @@ Back leaves the screen saver, returning to the (still locked) lock screen.
 2. **Lock-screen auto start (opt-in)**, in *Landscape only*, *Charging only* or
    *Charging + landscape* mode. A foreground service with a silent notification watches the screen
    and keyguard broadcasts.
-   - **When you lock the phone** (the screen turns off), it holds a wake lock for a few seconds,
-     takes one orientation sample and, if the mode is satisfied, starts StandBy:
+   - **When the screen turns off** (you lock it, or the lock screen times out), it watches the
+     orientation for 12 s under a short wake lock. That covers both "put it on the stand, then
+     lock" and "lock, then put it on the stand". If the mode is satisfied, it starts StandBy:
      1. A direct activity start. This only works when Android grants a background start.
      2. A **full-screen intent**, posted while the device is non-interactive. This is the case in
         which Android launches the target immediately, like an alarm clock. StandBy then turns the
@@ -269,7 +270,10 @@ Back leaves the screen saver, returning to the (still locked) lock screen.
      3. Verification that the StandBy activity actually resumed.
      4. Otherwise, **one** quiet fallback notification that says *why* (for example "Full-screen
         notifications is off"). It is never repeated for the same placement.
-   - **When you wake the locked phone** while it's horizontal, the same pipeline runs.
+   - **The awake lock screen never launches.** On OxygenOS 16, Android shows a full-screen intent
+     posted while the lock screen is *awake* as a plain notification instead of opening the app.
+     This was confirmed on a OnePlus 12R with the 2.1.0 trace. If you wake the phone on the stand,
+     StandBy appears when that screen turns off: press power, or wait for the lock-screen timeout.
    - It fires once per placement. It re-arms only when you unlock, pick the phone up (portrait), or
      unplug, so a StandBy timeout, the power button or exiting never relaunches it.
    - Every step is recorded in Diagnostics › *Last activation attempt*.

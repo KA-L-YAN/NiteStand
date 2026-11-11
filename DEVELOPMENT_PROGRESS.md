@@ -1,7 +1,18 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: v2.1.0 — critical fix: automatic StandBy launch
+Phase: v2.2.0 — automatic launch: device-verified root cause
+
+## v2.2.0 — findings from the first real OnePlus 12R trace (OxygenOS 16.0.5.1301, Android 16)
+- With every prerequisite granted ("Verdict: Ready"), a full-screen intent posted while the AWAKE
+  lock screen showed was presented as a notification (no launch); direct start was also blocked.
+- The screen-off path never ran in landscape: the phone was FLAT / PORTRAIT at the instant of
+  screen-off (users lock first, then place the phone), and a failed awake-lock-screen attempt had
+  disarmed the trigger 12 s earlier (armed=false at 17:04:38).
+- Fix: no launches from the awake lock screen (arming bookkeeping only); after every screen-off,
+  watch the orientation for 12 s (settle 0.5 s, partial wake lock ≤ 18 s, released when done) and
+  launch via the non-interactive full-screen intent; trace labels for fallback taps.
+- Still to confirm on the device: that the non-interactive full-screen intent launches StandBy.
 
 ## v2.1.0 — automatic launch fix (root cause and fix)
 - User report (real OnePlus 12R, 2.0.0): locking in landscape showed a "tap to show StandBy"
@@ -91,7 +102,7 @@ Phase: v2.1.0 — critical fix: automatic StandBy launch
 
 ## Build
 - Debug APK: SUCCESS
-- Release APK 2.1.0 (versionCode 5, R8, v2-signed, same certificate as earlier versions): SUCCESS
+- Release APK 2.2.0 (versionCode 6, R8, v2-signed, same certificate as earlier versions): SUCCESS
 - Unit + screenshot tests: PASSING (see last report; screenshots in app/build/screenshots)
 - Lint: 0 errors, 0 warnings
 - Android tests: compile SUCCESS, not run

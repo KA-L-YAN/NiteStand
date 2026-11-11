@@ -163,7 +163,8 @@ object StandByNotifications {
     fun postFallback(context: Context, reason: LaunchIssue?): Boolean {
         if (!canPostNotifications(context)) return false
         val open = PendingIntent.getActivity(
-            context, 12, launchIntent(context), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            context, 12, launchIntent(context).putExtra(StandByActivity.EXTRA_FROM_FALLBACK, true),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val text = context.getString(
             when (reason) {

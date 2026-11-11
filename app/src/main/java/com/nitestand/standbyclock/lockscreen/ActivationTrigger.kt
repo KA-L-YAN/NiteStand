@@ -41,11 +41,17 @@ enum class ActivationPhase {
 
 /** What made the conditions true. */
 enum class ActivationSource {
-    /** The screen turned off (phone locked) while the phone was in position: primary path. */
+    /**
+     * The screen is off (phone locked) and the phone is in position — either already when it was
+     * locked, or placed on the stand within the watch window after locking.
+     *
+     * This is the only automatic source: a full-screen intent posted while the device is
+     * non-interactive is launched by Android (alarm-clock behaviour). On OxygenOS 16 a full-screen
+     * intent posted while the *awake* lock screen is showing is presented as a notification
+     * instead (confirmed on a OnePlus 12R, NiteStand 2.1.0 trace), so the awake lock screen never
+     * triggers a launch; StandBy follows as soon as that screen turns off.
+     */
     SCREEN_OFF,
-
-    /** The phone was woken onto the lock screen while in position. */
-    LOCK_SCREEN_WAKE,
 }
 
 /**
@@ -66,13 +72,15 @@ class ActivationTrigger {
     var phase: ActivationPhase = ActivationPhase.IDLE
         private set
 
-    /** The screen turned off; [inputs] carries a fresh one-shot orientation sample. */
+    /** A reading taken while the screen is off (at lock time or during the watch window after it). */
     fun onScreenOff(inputs: WatcherInputs): ActivationSource? = evaluate(inputs, ActivationSource.SCREEN_OFF)
 
-    /** Any change while the screen is on (wake onto lock screen, orientation, power, settings). */
-    fun update(inputs: WatcherInputs): ActivationSource? {
-        val onLockScreen = inputs.screenOn && inputs.keyguardLocked
-        return evaluate(inputs, ActivationSource.LOCK_SCREEN_WAKE.takeIf { onLockScreen })
+    /**
+     * Any change while the screen is on (orientation on the awake lock screen, power, settings).
+     * Only updates arming (e.g. portrait observed → re-armed); it never launches.
+     */
+    fun update(inputs: WatcherInputs) {
+        evaluate(inputs, source = null)
     }
 
     fun onUnlocked() {

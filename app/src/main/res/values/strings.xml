@@ -155,7 +155,7 @@
     <string name="channel_launch">StandBy launch</string>
     <string name="channel_launch_description">Lets Android open StandBy over the lock screen automatically. Keep this channel on “Alert”/high importance.</string>
     <string name="watcher_notification_title">Lock-screen StandBy is ready</string>
-    <string name="watcher_notification_text">Wake your phone while it is horizontal to see StandBy</string>
+    <string name="watcher_notification_text">Lock your phone on the stand (or put it there right after locking) to see StandBy</string>
     <string name="launch_notification_title">StandBy</string>
     <string name="launch_notification_text">Opening StandBy…</string>
     <string name="fsi_dialog_title">Allow full-screen notifications</string>

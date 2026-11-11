@@ -39,14 +39,15 @@ data class ScreenState(val screenOn: Boolean, val keyguardLocked: Boolean)
 /**
  * Opt-in "Lock-screen auto start".
  *
- * **Activation** ([ActivationTrigger], fires once per placement):
- * - *Primary — screen off:* when the user locks the phone (screen turns off) the watcher holds a
- *   2-second partial wake lock, takes one orientation sample and, if the activation mode is
- *   satisfied, starts StandBy. A full-screen intent posted while the device is **non-interactive**
- *   is the case in which Android launches the target immediately; StandBy then turns the display
- *   back on (setTurnScreenOn) above the lock screen.
- * - *Secondary — wake onto the lock screen:* while the awake lock screen shows, the orientation
- *   sensor runs and StandBy starts when the phone is in position.
+ * **Activation** ([ActivationTrigger], fires once per placement), always with the screen OFF:
+ * when the screen turns off (power button, or the lock screen timing out) the watcher holds a short
+ * partial wake lock and watches the orientation for [WATCH_WINDOW_MS]. If the phone is — or within
+ * that window is put — in position, it starts StandBy. A full-screen intent posted while the device
+ * is **non-interactive** is launched by Android immediately (alarm-clock behaviour); StandBy then
+ * turns the display back on (setTurnScreenOn) above the still-locked keyguard.
+ *
+ * The awake lock screen never launches: OxygenOS 16 shows a full-screen intent posted in that state
+ * as a plain notification (verified on a OnePlus 12R).
  *
  * **Launch pipeline** (each step recorded in [ActivationTrace]):
  * 1. direct `startActivity` — works whenever Android grants this app a background start;
@@ -94,7 +95,12 @@ class LockScreenWatcherService : Service() {
                         screen.value = ScreenState(screenOn = false, keyguardLocked = keyguardLocked())
                         onScreenOff(serviceScope)
                     }
-                    else -> screen.value = readScreenState()
+                    else -> {
+                        screen.value = readScreenState()
+                        // Screen came back on: the screen-off watch window is over (a launch in
+                        // progress keeps running in its own job).
+                        screenOffJob?.cancel()
+                    }
                 }
             }
         }
@@ -137,12 +143,17 @@ class LockScreenWatcherService : Service() {
                     stopSelf()
                     return@collect
                 }
-                trigger.update(inputs)?.let { launch(it, inputs) }
+                trigger.update(inputs)
             }
         }
     }
 
-    /** Screen off (phone locked): one-shot orientation sample under a short wake lock. */
+    private var screenOffJob: Job? = null
+
+    /**
+     * Screen off: watch the orientation for a short window under a partial wake lock, so both
+     * "put it on the stand, then lock" and "lock, then put it on the stand" activate StandBy.
+     */
     private fun onScreenOff(serviceScope: CoroutineScope) {
         val base = latest ?: return
         if (!base.eligible || base.standByShowing) {
@@ -150,22 +161,38 @@ class LockScreenWatcherService : Service() {
             if (base.standByShowing) EventLog.log("Watcher: screen off while StandBy showing — no action")
             return
         }
+        screenOffJob?.cancel()
         val wakeLock = getSystemService(PowerManager::class.java)
             ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NiteStand:activation")
             ?.apply { acquire(WAKE_LOCK_MS) }
-        serviceScope.launch {
+        screenOffJob = serviceScope.launch {
             try {
-                val orientation = if (base.mode.requiresLandscape) {
-                    withTimeoutOrNull(SAMPLE_TIMEOUT_MS) {
-                        appContainer.orientationRepository.observe(sensitivityConfig.copy(settleMillis = 0))
-                            .first { it != DeviceOrientation.UNKNOWN }
-                    } ?: DeviceOrientation.UNKNOWN
-                } else {
-                    DeviceOrientation.UNKNOWN
+                EventLog.log("Watcher: screen off — watching position for ${WATCH_WINDOW_MS / 1000} s (armed=${trigger.armed})")
+                if (!base.mode.requiresLandscape) {
+                    val inputs = base.copy(screenOn = false, keyguardLocked = keyguardLocked())
+                    trigger.onScreenOff(inputs)?.let { source -> launch(source, inputs)?.join() }
+                    return@launch
                 }
-                val inputs = base.copy(screenOn = false, orientation = orientation, keyguardLocked = keyguardLocked())
-                EventLog.log("Watcher: screen off, sampled orientation=$orientation, power=${inputs.charging}, armed=${trigger.armed}")
-                trigger.onScreenOff(inputs)?.let { source -> launch(source, inputs)?.join() }
+                var last: DeviceOrientation? = null
+                val fired = withTimeoutOrNull(WATCH_WINDOW_MS) {
+                    appContainer.orientationRepository
+                        .observe(sensitivityConfig.copy(settleMillis = SCREEN_OFF_SETTLE_MS))
+                        .first { orientation ->
+                            if (orientation != last) {
+                                last = orientation
+                                EventLog.log("Watcher: screen off, orientation=$orientation")
+                            }
+                            val inputs = base.copy(screenOn = false, orientation = orientation, keyguardLocked = keyguardLocked())
+                            val source = trigger.onScreenOff(inputs)
+                            if (source != null) {
+                                launch(source, inputs)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                }
+                if (fired != null) launchJob?.join() else EventLog.log("Watcher: watch window ended (last=$last)")
             } finally {
                 if (wakeLock?.isHeld == true) wakeLock.release()
             }
@@ -251,14 +278,18 @@ class LockScreenWatcherService : Service() {
     private fun readScreenState(): ScreenState = ScreenState(screenOn = isInteractive(), keyguardLocked = keyguardLocked())
 
     private fun ActivationSource.label() = when (this) {
-        ActivationSource.SCREEN_OFF -> "phone locked"
-        ActivationSource.LOCK_SCREEN_WAKE -> "woken on lock screen"
+        ActivationSource.SCREEN_OFF -> "screen off, in position"
     }
 
     companion object {
-        /** Covers the orientation sample (≤1.5 s) and the launch verification (≤4.7 s), then released. */
-        private const val WAKE_LOCK_MS = 7_000L
-        private const val SAMPLE_TIMEOUT_MS = 1_500L
+        /** Upper bound: watch window (12 s) + launch verification (≤4.7 s); released as soon as done. */
+        private const val WAKE_LOCK_MS = 18_000L
+
+        /** How long after the screen turns off the phone may still be put on the stand. */
+        private const val WATCH_WINDOW_MS = 12_000L
+
+        /** The orientation must be stable this long (no false triggers while being handled). */
+        private const val SCREEN_OFF_SETTLE_MS = 500L
         private const val DIRECT_WAIT_MS = 700L
         private const val FSI_WAIT_MS = 4_000L
 

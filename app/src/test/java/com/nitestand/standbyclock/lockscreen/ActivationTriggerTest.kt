@@ -28,7 +28,7 @@ class ActivationTriggerTest {
     @Test
     fun `scenario A and B - locking the phone in landscape activates via screen off`() {
         val t = ActivationTrigger()
-        assertNull(t.update(inUse))
+        t.update(inUse)
         assertEquals(ActivationSource.SCREEN_OFF, t.onScreenOff(lockedLandscape))
         assertEquals(ActivationPhase.ACTIVATION_DETECTED, t.phase)
         assertFalse(t.armed)
@@ -42,16 +42,30 @@ class ActivationTriggerTest {
     }
 
     @Test
-    fun `scenario C - waking the locked phone in landscape activates via lock screen`() {
+    fun `lock first, then put it on the stand - readings during the screen-off window activate`() {
+        // OnePlus 12R trace: locked while held in portrait, then placed horizontally.
         val t = ActivationTrigger()
-        assertEquals(ActivationSource.LOCK_SCREEN_WAKE, t.update(lockedLandscape.copy(screenOn = true)))
+        assertNull(t.onScreenOff(lockedLandscape.copy(orientation = DeviceOrientation.PORTRAIT)))
+        assertNull(t.onScreenOff(lockedLandscape.copy(orientation = DeviceOrientation.FLAT)))
+        assertEquals(ActivationSource.SCREEN_OFF, t.onScreenOff(lockedLandscape))
+    }
+
+    @Test
+    fun `scenario C - the awake lock screen never launches and does not consume the activation`() {
+        // OxygenOS 16 turns a full-screen intent on the awake lock screen into a notification.
+        val t = ActivationTrigger()
+        t.update(lockedLandscape.copy(screenOn = true))
+        assertTrue(t.armed)
+        assertEquals(ActivationPhase.IDLE, t.phase)
+        // When that lock screen times out (screen off), StandBy starts.
+        assertEquals(ActivationSource.SCREEN_OFF, t.onScreenOff(lockedLandscape))
     }
 
     @Test
     fun `unknown orientation never activates`() {
         val t = ActivationTrigger()
         assertNull(t.onScreenOff(lockedLandscape.copy(orientation = DeviceOrientation.UNKNOWN)))
-        assertNull(t.update(lockedLandscape.copy(screenOn = true, orientation = DeviceOrientation.UNKNOWN)))
+        assertTrue(t.armed)
     }
 
     @Test
@@ -59,11 +73,12 @@ class ActivationTriggerTest {
         val t = ActivationTrigger()
         assertEquals(ActivationSource.SCREEN_OFF, t.onScreenOff(lockedLandscape))
         t.onLaunchRequested()
-        assertNull(t.update(lockedLandscape.copy(screenOn = true, standByShowing = true, orientation = DeviceOrientation.UNKNOWN)))
+        t.update(lockedLandscape.copy(screenOn = true, standByShowing = true, orientation = DeviceOrientation.UNKNOWN))
         assertEquals(ActivationPhase.STANDBY_ACTIVE, t.phase)
         assertNull(t.onScreenOff(lockedLandscape.copy(standByShowing = true)))
         assertNull(t.onScreenOff(lockedLandscape))
-        assertNull(t.update(lockedLandscape.copy(screenOn = true)))
+        t.update(lockedLandscape.copy(screenOn = true))
+        assertNull(t.onScreenOff(lockedLandscape))
     }
 
     @Test
@@ -71,9 +86,10 @@ class ActivationTriggerTest {
         val t = ActivationTrigger()
         t.onScreenOff(lockedLandscape)
         t.update(lockedLandscape.copy(screenOn = true, standByShowing = true))
-        assertNull(t.update(lockedLandscape.copy(screenOn = true)))
+        t.update(lockedLandscape.copy(screenOn = true))
         assertNull(t.onScreenOff(lockedLandscape))
-        assertNull(t.update(lockedLandscape.copy(screenOn = true, orientation = DeviceOrientation.PORTRAIT)))
+        // Picked up: portrait seen on the awake lock screen, or during a screen-off window.
+        t.update(lockedLandscape.copy(screenOn = true, orientation = DeviceOrientation.PORTRAIT))
         assertEquals(ActivationSource.SCREEN_OFF, t.onScreenOff(lockedLandscape))
     }
 
@@ -86,7 +102,7 @@ class ActivationTriggerTest {
         t.onFallbackPosted()
         assertEquals(ActivationPhase.FALLBACK_NOTIFICATION, t.phase)
         repeat(5) {
-            assertNull(t.update(lockedLandscape.copy(screenOn = true)))
+            t.update(lockedLandscape.copy(screenOn = true))
             assertNull(t.onScreenOff(lockedLandscape))
         }
     }

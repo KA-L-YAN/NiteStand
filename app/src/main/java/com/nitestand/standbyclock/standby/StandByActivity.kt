@@ -129,7 +129,9 @@ class StandByActivity : ComponentActivity() {
      * screen went off between the trigger and the launch) and remove the launch notification.
      */
     private fun handleLaunchIntent(intent: Intent) {
-        if (intent.getBooleanExtra(EXTRA_FROM_LOCK_SCREEN, false)) {
+        if (intent.getBooleanExtra(EXTRA_FROM_FALLBACK, false)) {
+            ActivationTrace.step("StandBy opened by tapping the fallback notification")
+        } else if (intent.getBooleanExtra(EXTRA_FROM_LOCK_SCREEN, false)) {
             ActivationTrace.step("StandBy activity created by automatic launch (turn-screen-on enabled)")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
                 setTurnScreenOn(true)
@@ -276,6 +278,7 @@ class StandByActivity : ComponentActivity() {
         const val SHORTCUT_ID = "start_standby"
         const val EXTRA_FORCE = "com.nitestand.standbyclock.extra.FORCE"
         const val EXTRA_FROM_LOCK_SCREEN = "com.nitestand.standbyclock.extra.FROM_LOCK_SCREEN"
+        const val EXTRA_FROM_FALLBACK = "com.nitestand.standbyclock.extra.FROM_FALLBACK"
 
         /**
          * @param force start immediately regardless of power/orientation (preview / manual / tile).

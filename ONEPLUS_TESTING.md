@@ -351,7 +351,7 @@ gfxinfo output, and Diagnostics › Copy report.
 1. Unlock the phone and use it normally for a few seconds.
 2. Put the OnePlus 12R horizontally on the stand.
 3. Press the power button to lock it.
-4. Wait up to ~2 s.
+4. Wait up to ~3 s. Also try locking first and then placing the phone on the stand within 12 s.
 
 **PASS:** the display comes back on by itself showing a black screen, the clock condenses in,
 there is no notification UI, and the phone stays locked (double-tap shows your secure lock screen).
@@ -367,7 +367,8 @@ stopped (for example "Full-screen intent posted … full-screen access DENIED", 
 |---|---|---|
 | A | NiteStand app open, phone horizontal → press power | Screen turns back on into StandBy (trace: "phone locked … Activity resumed … renderer active") |
 | B | NiteStand closed/swiped away, phone horizontal → press power | Same as A. Requires the watcher service to be alive (Unrestricted battery). |
-| C | Phone already locked and dark, left horizontal | Nothing happens while dark (by design — no sensors without a wake). Wake it (power / double-tap to wake): StandBy opens on the lock screen (trace: "woken on lock screen"). |
+| C | Wake the phone while it is on the stand (lock screen awake) | No launch while the lock screen is awake (OxygenOS shows full-screen intents as notifications in that state, confirmed in the 2.1.0 trace). Press power, or let the lock screen time out: StandBy then opens (trace: "screen off, in position"). |
+| C2 | Lock while holding the phone, then put it on the stand within ~12 s | StandBy opens as soon as it lies horizontally on the stand. |
 | D | Start StandBy from the app / tile / Preview | Opens immediately, no notification (trace: "Manual launch…"). |
 | E | Fallback | Turn **Full-screen notifications off** and repeat A. Expected: one quiet notification explaining that full-screen notifications are off, with an "Allow automatic start" action. Repeat locking: no further notifications until you pick the phone up or unlock. |
 | F | No loop | Let StandBy's battery timeout turn the screen off, or press power while StandBy shows. Expected: the screen stays off (no relaunch). After exiting StandBy with a double tap and pressing power while still horizontal: no relaunch. |
