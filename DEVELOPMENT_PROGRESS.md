@@ -1,7 +1,7 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: v2.2.1 — automatic launch: real root cause fixed
+Phase: v2.2.1 — automatic launch working on the OnePlus 12R (user-confirmed)
 
 ## v2.2.1 — actual root cause (second OnePlus 12R trace)
 - 2.2.0 trace: screen OFF, keyguard locked, landscape, full-screen access granted, channel HIGH —
@@ -11,7 +11,8 @@ Phase: v2.2.1 — automatic launch: real root cause fixed
   its group (NO_FSI_SUPPRESSIVE_GROUP_ALERT_BEHAVIOR) and shows a plain notification instead.
   Introduced in 2.1.0. Fix: removed setSilent (channel is already silent); regression test
   LaunchNotificationTest; the trace now logs the notification's group/alert state.
-- Device confirmation of the fixed build: pending.
+- Device confirmation: CONFIRMED by the user on the OnePlus 12R (OxygenOS 16.0.5.1301) —
+  automatic StandBy launch on lock works as expected with 2.2.1.
 
 ## v2.2.0 — findings from the first real OnePlus 12R trace (OxygenOS 16.0.5.1301, Android 16)
 - With every prerequisite granted ("Verdict: Ready"), a full-screen intent posted while the AWAKE
