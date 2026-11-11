@@ -42,7 +42,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.nitestand.standbyclock.diagnostics.ActivationTrace
 import com.nitestand.standbyclock.diagnostics.DeviceDiagnostics
+import com.nitestand.standbyclock.lockscreen.LaunchReadiness
 import com.nitestand.standbyclock.diagnostics.DiagnosticsReport
 import com.nitestand.standbyclock.diagnostics.EventLog
 import com.nitestand.standbyclock.lockscreen.LockScreenWatcherService
@@ -200,7 +202,9 @@ class MainActivity : ComponentActivity() {
         val lastState by StandBySession.lastState.collectAsStateWithLifecycle()
         val watcherRunning by LockScreenWatcherService.running.collectAsStateWithLifecycle()
         val events by EventLog.entries.collectAsStateWithLifecycle()
-        val sections = DiagnosticsReport.sections(
+        val trace by ActivationTrace.steps.collectAsStateWithLifecycle()
+        val readiness = remember(snapshot) { LaunchReadiness.read(this@MainActivity) }
+        val sections = DiagnosticsReport.activationSections(readiness, trace) + DiagnosticsReport.sections(
             snapshot, battery, orientation, showing, lastState, watcherRunning, settings, BuildConfig.VERSION_NAME,
         )
         DiagnosticsScreen(

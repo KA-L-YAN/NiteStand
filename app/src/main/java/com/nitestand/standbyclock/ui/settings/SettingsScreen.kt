@@ -23,6 +23,9 @@ import com.nitestand.standbyclock.ui.motion.Motion
 import com.nitestand.standbyclock.ui.standby.rememberAnimatedStyle
 import com.nitestand.standbyclock.ui.theme.StandByStyle
 import com.nitestand.standbyclock.widgets.WidgetDataSources
+import com.nitestand.standbyclock.lockscreen.LaunchIssue
+import com.nitestand.standbyclock.lockscreen.LaunchReadiness
+import com.nitestand.standbyclock.lockscreen.StandByNotifications
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -223,6 +226,7 @@ private fun LazyListScope.settingsContent(
             s.lockScreenWatcher && s.activationMode.supportsLockScreenWatcher,
             enabled = s.standByEnabled && s.activationMode.supportsLockScreenWatcher,
         ) { v -> onToggleWatcher(v) }
+        if (s.lockScreenWatcher && s.activationMode.supportsLockScreenWatcher) LaunchReadinessRows()
         SwitchRow(R.string.pref_lock_screen, R.string.pref_lock_screen_summary, s.showOnLockScreen) { v -> update { it.copy(showOnLockScreen = v) } }
         GroupDivider()
         ChoiceRow(
@@ -489,5 +493,80 @@ private fun LicensesRow() {
             text = { Text(text, style = MaterialTheme.typography.bodySmall, modifier = Modifier.verticalScroll(rememberScrollState())) },
             confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_ok)) } },
         )
+    }
+}
+
+/**
+ * What automatic start still needs on this phone. Only genuinely required items are "Required";
+ * battery optimisation is a recommendation (OxygenOS may stop the watcher otherwise).
+ */
+@Composable
+private fun LaunchReadinessRows() {
+    val context = LocalContext.current
+    var readiness by remember { mutableStateOf(LaunchReadiness.read(context)) }
+    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+        readiness = LaunchReadiness.read(context)
+        onPauseOrDispose { }
+    }
+    val issues = readiness.issues
+    Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+        if (issues.none { it.blocking }) {
+            Text(
+                stringResource(R.string.readiness_ok),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        issues.forEach { issue ->
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(if (issue.blocking) R.string.readiness_required else R.string.readiness_recommended),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (issue.blocking) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(stringResource(issue.labelRes()), style = MaterialTheme.typography.bodyMedium)
+                }
+                TextButton(onClick = { openFix(context, issue) }) { Text(stringResource(R.string.readiness_fix)) }
+            }
+        }
+    }
+}
+
+private fun LaunchIssue.labelRes(): Int = when (this) {
+    LaunchIssue.NOTIFICATIONS_OFF -> R.string.readiness_notifications
+    LaunchIssue.FULL_SCREEN_DENIED -> R.string.readiness_fsi
+    LaunchIssue.CHANNEL_DEMOTED -> R.string.readiness_channel
+    LaunchIssue.DO_NOT_DISTURB -> R.string.readiness_dnd
+    LaunchIssue.BATTERY_RESTRICTED -> R.string.readiness_battery
+}
+
+private fun openFix(context: android.content.Context, issue: LaunchIssue) {
+    val pkg = android.net.Uri.fromParts("package", context.packageName, null)
+    val intent = when (issue) {
+        LaunchIssue.FULL_SCREEN_DENIED ->
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg)
+            } else {
+                android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg)
+            }
+        LaunchIssue.CHANNEL_DEMOTED ->
+            android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, StandByNotifications.CHANNEL_LAUNCH)
+        LaunchIssue.NOTIFICATIONS_OFF ->
+            android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+        LaunchIssue.DO_NOT_DISTURB -> android.content.Intent(android.provider.Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS)
+        // OxygenOS keeps "Battery usage: Unrestricted" under App info › Battery.
+        LaunchIssue.BATTERY_RESTRICTED -> android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg)
+    }.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }.onFailure {
+        runCatching {
+            context.startActivity(
+                android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
     }
 }

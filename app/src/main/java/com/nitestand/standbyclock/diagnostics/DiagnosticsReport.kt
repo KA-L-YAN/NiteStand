@@ -88,6 +88,29 @@ object DiagnosticsReport {
         ),
     )
 
+    /** Automatic-launch prerequisites and the step-by-step record of the last attempt. */
+    fun activationSections(readiness: com.nitestand.standbyclock.lockscreen.LaunchReadiness, trace: List<ActivationTrace.Step>): List<DiagnosticsSection> = listOf(
+        DiagnosticsSection(
+            "Automatic launch readiness",
+            listOf(
+                "Notifications allowed" to readiness.notificationsAllowed.yesNo(),
+                "Full-screen notifications (required)" to readiness.fullScreenAllowed.yesNo(),
+                "Launch channel importance" to when (val i = readiness.channelImportance) {
+                    null -> "Not created yet (created as High)"
+                    android.app.NotificationManager.IMPORTANCE_HIGH, android.app.NotificationManager.IMPORTANCE_MAX -> "High"
+                    else -> "Lowered ($i) — launches blocked"
+                },
+                "Do Not Disturb" to if (readiness.doNotDisturb) "On (may block)" else "Off",
+                "Battery unrestricted (recommended)" to readiness.batteryUnrestricted.yesNo(),
+                "Verdict" to (readiness.blockingIssue?.let { "Blocked: ${it.name}" } ?: "Ready"),
+            ),
+        ),
+        DiagnosticsSection(
+            "Last activation attempt",
+            if (trace.isEmpty()) listOf("" to "No attempt yet") else trace.map { it.time to it.text },
+        ),
+    )
+
     fun format(sections: List<DiagnosticsSection>, events: List<String>): String = buildString {
         appendLine("NiteStand diagnostics")
         sections.forEach { section ->

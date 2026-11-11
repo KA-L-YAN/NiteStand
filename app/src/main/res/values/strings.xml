@@ -153,11 +153,11 @@
     <string name="channel_watcher">Lock-screen auto start</string>
     <string name="channel_watcher_description">Required while lock-screen auto start is on. You can hide this channel.</string>
     <string name="channel_launch">StandBy launch</string>
-    <string name="channel_launch_description">Used to open StandBy over the lock screen.</string>
+    <string name="channel_launch_description">Lets Android open StandBy over the lock screen automatically. Keep this channel on “Alert”/high importance.</string>
     <string name="watcher_notification_title">Lock-screen StandBy is ready</string>
     <string name="watcher_notification_text">Wake your phone while it is horizontal to see StandBy</string>
     <string name="launch_notification_title">StandBy</string>
-    <string name="launch_notification_text">Tap to show the StandBy clock</string>
+    <string name="launch_notification_text">Opening StandBy…</string>
     <string name="fsi_dialog_title">Allow full-screen notifications</string>
     <string name="fsi_dialog_body">To open StandBy over the lock screen by itself, Android needs “Full-screen notifications” (Android 14+) allowed for StandBy Clock. Without it you will only get a notification to tap.</string>
     <string name="fsi_dialog_open">Open settings</string>
@@ -271,4 +271,22 @@
     <string name="pref_choose_clock">Choose clock</string>
     <string name="pref_info_page">Information page</string>
     <string name="pref_info_page_summary">Swipe sideways on StandBy for date, battery and alarm</string>
+    <string name="channel_fallback">StandBy couldn’t open</string>
+    <string name="channel_fallback_description">Explains when Android blocked StandBy from opening automatically.</string>
+    <string name="fallback_title">StandBy didn’t open automatically</string>
+    <string name="fallback_reason_fsi">Android blocked it because “Full-screen notifications” is off for NiteStand. Tap to open StandBy now, or allow it once to make it automatic.</string>
+    <string name="fallback_reason_channel">The “StandBy launch” notification category is silenced, so Android cannot open StandBy. Tap to open it now; set that category back to Alert in notification settings.</string>
+    <string name="fallback_reason_dnd">Do Not Disturb stopped Android from opening StandBy. Tap to open it now.</string>
+    <string name="fallback_reason_notifications">Notifications are off for NiteStand, so it cannot ask Android to open StandBy. Tap to open it now.</string>
+    <string name="fallback_reason_unknown">Your phone did not open StandBy (all settings looked correct). Tap to open it now; Diagnostics shows the full trace.</string>
+    <string name="fallback_action_allow">Allow automatic start</string>
+    <string name="readiness_ok">Ready: Android can open StandBy automatically.</string>
+    <string name="readiness_required">Required</string>
+    <string name="readiness_recommended">Recommended</string>
+    <string name="readiness_fix">Fix</string>
+    <string name="readiness_notifications">Allow notifications for NiteStand</string>
+    <string name="readiness_fsi">Allow “Full-screen notifications” (how Android opens StandBy over the lock screen)</string>
+    <string name="readiness_channel">Set the “StandBy launch” notification category back to Alert</string>
+    <string name="readiness_dnd">Do Not Disturb is on and may block the automatic start</string>
+    <string name="readiness_battery">Set Battery usage to “Unrestricted” so OxygenOS keeps the watcher running</string>
 </resources>
