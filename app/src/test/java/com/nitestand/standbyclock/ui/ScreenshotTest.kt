@@ -279,4 +279,21 @@ class ScreenshotTest {
     }
 
     private var previousT = 16L
+
+    /** The entrance choreography at fixed points of its timeline. */
+    @Test
+    @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
+    fun entranceFrames() {
+        val settings = StandBySettings(hourFormat = com.nitestand.standbyclock.clock.HourFormat.TWENTY_FOUR_HOUR, burnInProtection = false)
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            StandByScreen(StandByUiState(activation(StandByState.ACTIVE), settings, false), sources, {}, {}, systemReduceMotion = false) {}
+        }
+        var at = 0L
+        for (t in listOf(16L, 300L, 550L, 800L, 1_400L)) {
+            compose.mainClock.advanceTimeBy(t - at)
+            at = t
+            save("entrance_t$t")
+        }
+    }
 }

@@ -65,4 +65,33 @@ class MotionSystemTest {
         val mid = a.lerpTo(b, 0.5f).primary
         assertTrue(mid.red < a.primary.red && mid.red > b.primary.red)
     }
+
+    @Test
+    fun `entrance timeline - black hold, soft fade, no pop, secondary after clock`() {
+        val t = com.nitestand.standbyclock.ui.standby.EntranceTimeline
+        assertEquals(0f, t.clockAlpha(0f), 0f)
+        assertEquals(0f, t.clockAlpha(0.04f), 0f)
+        assertEquals(1f, t.clockAlpha(1f), 0f)
+        assertTrue(t.clockScale(0f) >= 0.97f)
+        assertEquals(1f, t.clockScale(1f), 0.0001f)
+        assertEquals(0f, t.secondary(0.6f), 0f)
+        assertEquals(1f, t.secondary(1f), 0f)
+        assertEquals(0f, t.blurDp(1f, 0f), 0f)
+        // Secondary never leads the clock.
+        for (i in 0..100) {
+            val e = i / 100f
+            assertTrue(t.secondary(e) <= t.clockAlpha(e) + 1e-4f)
+        }
+    }
+
+    @Test
+    fun `night transition passes through a warm dim stage`() {
+        val day = StandByStyle.create(ClockTheme.DIGITAL_LARGE, ClockPalette.WHITE, 0f, false)
+        val night = StandByStyle.create(ClockTheme.DIGITAL_LARGE, ClockPalette.WHITE, 1f, false)
+        val mid = com.nitestand.standbyclock.ui.standby.nightPath(day, night, 0.5f).primary
+        assertTrue("warm (red > blue)", mid.red > mid.blue + 0.2f)
+        assertTrue("dimmer than day", mid.alpha * (mid.red + mid.green + mid.blue) < day.primary.alpha * (day.primary.red + day.primary.green + day.primary.blue))
+        assertEquals(day.primary, com.nitestand.standbyclock.ui.standby.nightPath(day, night, 0f).primary)
+        assertEquals(night.primary, com.nitestand.standbyclock.ui.standby.nightPath(day, night, 1f).primary)
+    }
 }
