@@ -10,12 +10,15 @@
         - USE_FULL_SCREEN_INTENT: the sanctioned way to show an activity over the lock screen from
           the background (user can revoke it on Android 14+)
         - RECEIVE_BOOT_COMPLETED: restart the watcher after reboot if the user enabled it
+        - WAKE_LOCK: keep the CPU awake a few seconds at screen-off to read the orientation and verify the launch
     -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Short partial wake lock (released within 7 s) while sampling orientation at screen-off and verifying the launch (watcher only). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <!-- Lets diagnostics check whether this device has a screen saver settings page. -->
     <queries>
@@ -29,7 +32,7 @@
         - battery state: sticky ACTION_BATTERY_CHANGED broadcast (no permission)
         - orientation: accelerometer / gravity sensor (no permission at <= 200 Hz)
         - next alarm: AlarmManager.getNextAlarmClock() (no permission)
-        - keep screen on: FLAG_KEEP_SCREEN_ON window flag (no WAKE_LOCK needed)
+        - keep screen on: FLAG_KEEP_SCREEN_ON window flag (no wake lock)
         - brightness: per-window screenBrightness override (no WRITE_SETTINGS needed)
         The two android:permission attributes below protect our services so that only the
         system can bind them; they are not permissions requested by the app.

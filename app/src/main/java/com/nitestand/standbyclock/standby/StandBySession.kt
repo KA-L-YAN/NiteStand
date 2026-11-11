@@ -20,6 +20,15 @@ object StandBySession {
     private val _lastState = MutableStateFlow<StandByState?>(null)
     val lastState: StateFlow<StandByState?> = _lastState.asStateFlow()
 
+    private val _resumeCount = MutableStateFlow(0)
+
+    /** Incremented every time the StandBy activity reaches RESUMED (used to verify launches). */
+    val resumeCount: StateFlow<Int> = _resumeCount.asStateFlow()
+
+    fun markResumed() {
+        _resumeCount.value = _resumeCount.value + 1
+    }
+
     private val _exitRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     /** Emits when something outside the StandBy surface (e.g. the tile) asks it to close. */
