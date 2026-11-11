@@ -47,7 +47,8 @@ class OrientationClassifier(private val config: OrientationConfig = OrientationC
         if (raw != candidate) {
             candidate = raw
             candidateSince = timestampMillis
-        } else if (timestampMillis - candidateSince >= config.settleMillis) {
+        }
+        if (timestampMillis - candidateSince >= config.settleMillis) {
             current = raw
             candidate = null
         }
