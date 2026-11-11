@@ -61,4 +61,4 @@ Phase: v1.1.0 — OnePlus 12R / no-charger StandBy
   and pass -Probolectric.dependency.dir=<dir>.
 - Release signing key lives outside the repo (/root/.standby-signing in the build container only).
 
-Last verified commit: see git log on branch ccr-6cf7a3e0-k2qpji
+Last verified commit: 1a9476e (branch ccr-6cf7a3e0-k2qpji)
