@@ -80,4 +80,4 @@ Phase: v2.0.0 — premium ambient StandBy redesign
   and pass -Probolectric.dependency.dir=<dir>.
 - Release signing key lives outside the repo (/root/.standby-signing in the build container only).
 
-Last verified commit: a88d95e (branch ccr-6cf7a3e0-k2qpji)
+Last verified commit: e520dc2 (branch ccr-6cf7a3e0-k2qpji)
