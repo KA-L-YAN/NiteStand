@@ -12,7 +12,7 @@ import com.nitestand.standbyclock.clock.DateStyle
 import com.nitestand.standbyclock.clock.TickInterval
 import com.nitestand.standbyclock.clock.WorldCities
 import com.nitestand.standbyclock.settings.StandBySettings
-import com.nitestand.standbyclock.ui.clock.ClockFace
+import com.nitestand.standbyclock.ui.clock.ClockFaceView
 import com.nitestand.standbyclock.ui.theme.StandByStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -127,6 +127,6 @@ object ClockWidget : StandByWidget<ClockFaceData> {
 
     @Composable
     override fun Content(data: ClockFaceData, style: StandByStyle, modifier: Modifier) {
-        ClockFace(data, style, modifier)
+        ClockFaceView(data, style, modifier)
     }
 }

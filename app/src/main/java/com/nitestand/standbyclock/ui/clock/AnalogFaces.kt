@@ -3,6 +3,8 @@ package com.nitestand.standbyclock.ui.clock
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.Typeface
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,18 +28,51 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nitestand.standbyclock.ui.motion.LocalMotion
+import com.nitestand.standbyclock.ui.motion.Motion
 import com.nitestand.standbyclock.ui.theme.StandByStyle
+import kotlinx.coroutines.launch
 import com.nitestand.standbyclock.widgets.ClockFaceData
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-/** Hand angles (degrees clockwise from 12) shared by every analog face. */
-private class HandAngles(data: ClockFaceData) {
-    private val t = data.time
-    val hour = (t.hour % 12 + t.minute / 60f) * 30f
-    val minute = (t.minute + if (data.showSeconds) t.second / 60f else 0f) * 6f
-    val second = t.second * 6f
+/** Angle maths for hands, kept pure for tests. */
+object AngleMath {
+    /** The unwrapped angle closest to [current] that points the same way as [target] (no backwards spins). */
+    fun shortestTarget(current: Float, target: Float): Float {
+        val delta = ((target - current) % 360f + 540f) % 360f - 180f
+        return current + delta
+    }
+
+    fun hour(data: ClockFaceData): Float = (data.time.hour % 12 + data.time.minute / 60f) * 30f
+    fun minute(data: ClockFaceData): Float = (data.time.minute + if (data.showSeconds) data.time.second / 60f else 0f) * 6f
+    fun second(data: ClockFaceData): Float = data.time.second * 6f
+}
+
+/**
+ * Hand angles that move smoothly to each new position along the shortest path. The values are
+ * read inside the Canvas draw block only, so a hand moving never recomposes the face.
+ */
+internal class HandAngles(private val hourA: Animatable<Float, *>, private val minuteA: Animatable<Float, *>, private val secondA: Animatable<Float, *>) {
+    val hour: Float get() = hourA.value
+    val minute: Float get() = minuteA.value
+    val second: Float get() = secondA.value
+}
+
+@Composable
+internal fun rememberHandAngles(data: ClockFaceData): HandAngles {
+    val motion = LocalMotion.current
+    val hour = remember { Animatable(AngleMath.hour(data)) }
+    val minute = remember { Animatable(AngleMath.minute(data)) }
+    val second = remember { Animatable(AngleMath.second(data)) }
+    val targets = Triple(AngleMath.hour(data), AngleMath.minute(data), AngleMath.second(data))
+    LaunchedEffect(targets) {
+        launch { hour.animateTo(AngleMath.shortestTarget(hour.value, targets.first), tween(motion.ms(Motion.HAND_MS), easing = Motion.Standard)) }
+        launch { minute.animateTo(AngleMath.shortestTarget(minute.value, targets.second), tween(motion.ms(Motion.HAND_MS), easing = Motion.Standard)) }
+        launch { second.animateTo(AngleMath.shortestTarget(second.value, targets.third), tween(motion.ms(Motion.SECONDS_MS), easing = Motion.Standard)) }
+    }
+    return remember { HandAngles(hour, minute, second) }
 }
 
 /** Square dial centred in the box, with an optional date line in the lower half. */
@@ -52,7 +88,7 @@ private fun AnalogScaffold(
 ) {
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val diameter: Dp = min(maxWidth.value, maxHeight.value).dp * 0.94f
-        val angles = HandAngles(data)
+        val angles = rememberHandAngles(data)
         Box(Modifier.size(diameter), contentAlignment = Alignment.Center) {
             if (data.showDate) {
                 Caption(
@@ -220,5 +256,56 @@ fun AnalogElegantFace(data: ClockFaceData, style: StandByStyle) {
             rotate(a.second, center) { drawCircle(style.accent, r * 0.022f, Offset(center.x, center.y + r * 0.16f)) }
         }
         drawCircle(style.hands, r * 0.022f, center)
+    }
+}
+
+/** Large Hands: no dial, just two long, generous hands and twelve faint dots. */
+@Composable
+fun AnalogLargeHandsFace(data: ClockFaceData, style: StandByStyle) {
+    AnalogScaffold(data, style) { r, a ->
+        for (h in 0 until 12) drawCircle(style.tertiary, r * if (h % 3 == 0) 0.022f else 0.014f, polar(h * 30f, r * 0.97f))
+        simpleHand(a.hour, r * 0.6f, r * 0.11f, style.primary.copy(alpha = style.primary.alpha * 0.82f))
+        simpleHand(a.minute, r * 0.9f, r * 0.075f, style.hands)
+        if (data.showSeconds) secondHand(a.second, r, style.accent, width = r * 0.012f)
+        drawCircle(style.background, r * 0.025f, center)
+    }
+}
+
+/** Thin Line: a hairline ring with the passing hour traced in colour, and hairline hands. */
+@Composable
+fun AnalogThinLineFace(data: ClockFaceData, style: StandByStyle) {
+    AnalogScaffold(data, style, dateWeight = 500, dateOffset = 0.22f) { r, a ->
+        val ring = r * 0.95f
+        drawCircle(style.secondary.copy(alpha = style.secondary.alpha * 0.45f), ring, center, style = Stroke(r * 0.006f))
+        val topLeft = Offset(center.x - ring, center.y - ring)
+        drawArc(
+            color = style.accent,
+            startAngle = -90f,
+            sweepAngle = (a.minute % 360f + 360f) % 360f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = androidx.compose.ui.geometry.Size(ring * 2, ring * 2),
+            style = Stroke(r * 0.014f, cap = StrokeCap.Round),
+        )
+        simpleHand(a.hour, r * 0.5f, r * 0.014f, style.hands)
+        simpleHand(a.minute, r * 0.86f, r * 0.009f, style.hands)
+        if (data.showSeconds) secondHand(a.second, r, style.accent, width = r * 0.005f)
+        drawCircle(style.hands, r * 0.018f, center)
+    }
+}
+
+/** Orbit (geometric): the hour as a large thin numeral, the minutes travelling around a ring. */
+@Composable
+fun OrbitFace(data: ClockFaceData, style: StandByStyle) {
+    val typeface = rememberTypeface(ClockFont.GEOMETRIC)
+    val hourText = remember(typeface) { DialText(typeface, 200) }
+    val minuteText = remember(typeface) { DialText(typeface, 400) }
+    AnalogScaffold(data.copy(showDate = false), style) { r, a ->
+        val ring = r * 0.93f
+        drawCircle(style.secondary.copy(alpha = style.secondary.alpha * 0.35f), ring, center, style = Stroke(r * 0.006f))
+        val dot = polar(a.minute, ring)
+        drawCircle(style.accent, r * 0.045f, dot)
+        with(hourText) { draw(data.text.hours, center, r * 0.82f, style.primary) }
+        with(minuteText) { draw(data.text.minutes, polar(a.minute, ring * 0.8f), r * 0.13f, style.accent) }
     }
 }

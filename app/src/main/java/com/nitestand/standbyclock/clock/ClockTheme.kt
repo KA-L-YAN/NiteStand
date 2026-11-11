@@ -6,13 +6,13 @@ package com.nitestand.standbyclock.clock
  */
 enum class ClockTheme {
     // Digital
-    DIGITAL_LARGE, DIGITAL_COLOR, MINIMAL, CLASSIC, WORLD,
+    DIGITAL_LARGE, CLASSIC, BUBBLE, DIGITAL_COLOR, MINIMAL, WORLD, CALENDAR,
 
     // Analog
-    ANALOG, ANALOG_MINIMAL, ANALOG_MODERN, ANALOG_ELEGANT,
+    ANALOG, ANALOG_MINIMAL, ANALOG_MODERN, ANALOG_ELEGANT, ANALOG_LARGE, ANALOG_LINE,
 
-    // Expressive
-    BUBBLE, SERIF, LINE, CALENDAR, RETRO, AMBIENT;
+    // Decorative
+    RETRO, GEOMETRIC, SERIF, LINE, AMBIENT;
 
     fun cycle(delta: Int): ClockTheme {
         val all = entries

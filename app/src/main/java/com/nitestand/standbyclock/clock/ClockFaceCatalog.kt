@@ -2,7 +2,7 @@ package com.nitestand.standbyclock.clock
 
 import com.nitestand.standbyclock.settings.StandBySettings
 
-enum class FaceCategory { DIGITAL, ANALOG, EXPRESSIVE }
+enum class FaceCategory { DIGITAL, ANALOG, DECORATIVE }
 
 /**
  * Behaviour of one clock face. Rendering lives in the UI layer; everything a face *supports* is
@@ -61,34 +61,50 @@ object ClockFaceCatalog {
             listOf(ClockPalette.WHITE, ClockPalette.WARM_WHITE, ClockPalette.SOFT_ORANGE),
             ClockPalette.WARM_WHITE, supportsDate = true, supportsAmPm = false,
         ),
-        ClockFaceSpec(ClockTheme.BUBBLE, FaceCategory.EXPRESSIVE, colorful, ClockPalette.PINK, supportsDate = false, supportsSeconds = false),
         ClockFaceSpec(
-            ClockTheme.SERIF, FaceCategory.EXPRESSIVE,
+            ClockTheme.ANALOG_LARGE, FaceCategory.ANALOG,
+            listOf(ClockPalette.WHITE, ClockPalette.WARM_WHITE, ClockPalette.SOFT_ORANGE, ClockPalette.YELLOW, ClockPalette.BLUE, ClockPalette.PINK),
+            ClockPalette.WHITE, supportsDate = false, supportsAmPm = false, allowsPanel = false,
+        ),
+        ClockFaceSpec(
+            ClockTheme.ANALOG_LINE, FaceCategory.ANALOG,
+            listOf(ClockPalette.WHITE, ClockPalette.WARM_WHITE, ClockPalette.BLUE, ClockPalette.GREEN, ClockPalette.PURPLE),
+            ClockPalette.WHITE, supportsDate = true, supportsAmPm = false,
+        ),
+        ClockFaceSpec(
+            ClockTheme.GEOMETRIC, FaceCategory.DECORATIVE,
+            listOf(ClockPalette.WHITE, ClockPalette.SOFT_ORANGE, ClockPalette.BLUE, ClockPalette.GREEN, ClockPalette.PURPLE, ClockPalette.PINK),
+            ClockPalette.SOFT_ORANGE, supportsDate = false, supportsAmPm = false, allowsPanel = false,
+        ),
+        ClockFaceSpec(ClockTheme.BUBBLE, FaceCategory.DIGITAL, colorful, ClockPalette.PINK, supportsDate = false, supportsSeconds = false),
+        ClockFaceSpec(
+            ClockTheme.SERIF, FaceCategory.DECORATIVE,
             listOf(ClockPalette.WHITE, ClockPalette.WARM_WHITE, ClockPalette.SOFT_ORANGE, ClockPalette.RED),
             ClockPalette.WARM_WHITE, supportsDate = true,
         ),
         ClockFaceSpec(
-            ClockTheme.LINE, FaceCategory.EXPRESSIVE,
+            ClockTheme.LINE, FaceCategory.DECORATIVE,
             listOf(ClockPalette.WHITE, ClockPalette.WARM_WHITE, ClockPalette.BLUE, ClockPalette.GREEN, ClockPalette.SOFT_ORANGE),
             ClockPalette.WHITE, supportsDate = true,
         ),
         ClockFaceSpec(
-            ClockTheme.CALENDAR, FaceCategory.EXPRESSIVE,
+            ClockTheme.CALENDAR, FaceCategory.DIGITAL,
             listOf(ClockPalette.RED, ClockPalette.SOFT_ORANGE, ClockPalette.BLUE, ClockPalette.WHITE),
             ClockPalette.RED, supportsDate = true, allowsPanel = false,
         ),
         ClockFaceSpec(
-            ClockTheme.RETRO, FaceCategory.EXPRESSIVE,
+            ClockTheme.RETRO, FaceCategory.DECORATIVE,
             listOf(ClockPalette.RED, ClockPalette.SOFT_ORANGE, ClockPalette.YELLOW, ClockPalette.GREEN, ClockPalette.BLUE),
             ClockPalette.RED, supportsDate = true,
         ),
         ClockFaceSpec(
-            ClockTheme.AMBIENT, FaceCategory.EXPRESSIVE, emptyList(), ClockPalette.WHITE,
+            ClockTheme.AMBIENT, FaceCategory.DECORATIVE, emptyList(), ClockPalette.WHITE,
             supportsDate = true, allowsPanel = false, fixedDim = true,
         ),
     )
 
     private val byId = faces.associateBy { it.id }
+    private val ordered = ClockTheme.entries.map { byId.getValue(it) }
 
     fun spec(id: ClockTheme): ClockFaceSpec = byId.getValue(id)
 
@@ -98,5 +114,5 @@ object ClockFaceCatalog {
         return settings.faceColors[id]?.takeIf { it in spec.palettes } ?: spec.defaultPalette
     }
 
-    fun byCategory(category: FaceCategory): List<ClockFaceSpec> = faces.filter { it.category == category }
+    fun byCategory(category: FaceCategory): List<ClockFaceSpec> = ordered.filter { it.category == category }
 }

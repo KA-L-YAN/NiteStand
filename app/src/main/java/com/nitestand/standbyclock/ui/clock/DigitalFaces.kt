@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import com.nitestand.standbyclock.ui.motion.LocalSecondaryAlpha
 import com.nitestand.standbyclock.ui.theme.StandByStyle
 import com.nitestand.standbyclock.widgets.ClockFaceData
 import com.nitestand.standbyclock.widgets.WorldTime
@@ -57,9 +59,11 @@ internal fun Caption(
     tight: Boolean = false,
 ) {
     val locale = LocalConfiguration.current.locales[0] ?: Locale.ROOT
+    val secondaryAlpha = LocalSecondaryAlpha.current
     Text(
         if (upper) text.uppercase(locale) else text,
-        modifier = modifier,
+        // Secondary text joins the entrance choreography (fades in after the time).
+        modifier = modifier.graphicsLayer { alpha = secondaryAlpha() },
         style = TextStyle(
             fontFamily = font.family(weight),
             fontSize = size.asFixedSp(),
@@ -258,7 +262,7 @@ fun BubbleFace(data: ClockFaceData, style: StandByStyle) {
 
 private val SerifSpec = DigitalSpec(
     font = ClockFont.SERIF, weight = 480, tracking = 0.0f, heightFraction = 0.66f,
-    secondsScale = 0.28f, amPmScale = 0.16f, amPmWeight = 600, amPmTracking = 0.12f, features = "lnum",
+    secondsScale = 0.28f, amPmScale = 0.16f, amPmWeight = 600, amPmTracking = 0.12f, drawnColon = false,
 )
 
 /** High-contrast display serif, editorial and calm. */
