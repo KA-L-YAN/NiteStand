@@ -282,3 +282,47 @@ stutters when seconds are on.
 
 **If it fails, capture.** A screenshot (`adb exec-out screencap -p > face.png`), the face name and
 settings, and `adb shell dumpsys gfxinfo com.nitestand.standbyclock` for any stutter.
+
+---
+
+## 14. Ambient experience and performance (v2.0.0)
+
+**Steps (in a dark room, phone horizontal on the stand)**
+1. **Enter.** Use the tile, Preview, or lock-screen auto start. Watch the first second.
+2. **Minute change.** Wait for a minute change, with the Large face at 24-hour.
+3. **Face change.** Swipe up and down on the clock several times, and switch faces in the gallery.
+4. **Colour.** Change the colour in Settings › Appearance, then open StandBy.
+5. **Info page.** Swipe sideways to the information page and back.
+6. **Tap.** Tap once, then double-tap.
+7. **Night.** Night mode: Always on. Open StandBy, then turn Night off from the tile/app and back.
+8. **Burn-in.** Leave it for 5 minutes and watch a digit against a fixed edge.
+
+**Expected**
+1. No sliding Android transition: the screen fades from black and the clock settles in. There is
+   no white flash and no status or navigation bar.
+2. Only the changed digit(s) move: old up and out, new up and in, in under a second. There is no
+   flicker, and the other digits don't move.
+3. The clock follows your finger slightly and springs back. The new face arrives from the swipe
+   direction.
+4. The colours blend smoothly; nothing snaps.
+5. The pages recede and fade as they move. There are no cards or boxes.
+6. A tap shows faint page dots plus "Double-tap to exit" for about 3 s. A double tap fades out and
+   returns to the lock screen or launcher without a black-frame glitch, and normal brightness
+   returns.
+7. The screen dims gradually into red over about 2.5 s. Brightness ramps down. Secondary text is
+   clearly fainter than the time.
+8. You don't notice any movement unless you compare against a fixed reference. It never jumps.
+
+**Frame rate (please measure; it could not be measured in the build environment)**
+```
+adb shell dumpsys gfxinfo com.nitestand.standbyclock reset
+# perform steps 2–5 for ~1 minute
+adb shell dumpsys gfxinfo com.nitestand.standbyclock | grep -E "Total frames|Janky|50th|90th|99th"
+```
+Expected: janky frames < 5 %, and a 90th percentile below the display frame time (16.6 ms at 60 Hz).
+
+**CPU / battery at rest:** `adb shell top -n 1 -o %CPU,ARGS | grep standby` while StandBy has been
+idle for a minute should show ~0 % except during the once-per-minute transition.
+
+**If it fails, capture:** a screen recording (`adb shell screenrecord /sdcard/ns.mp4`), the
+gfxinfo output, and Diagnostics › Copy report.

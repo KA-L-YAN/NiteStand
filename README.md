@@ -1,4 +1,6 @@
-# StandBy Clock
+# StandBy Clock — NiteStand
+
+**NiteStand — an Apple StandBy-inspired ambient display for Android.** (Not affiliated with Apple; all code, fonts and assets are original or openly licensed.)
 
 **StandBy Clock turns your Android phone into a bedside display while charging.**
 
@@ -23,7 +25,8 @@ Material 3). No network access, no accounts. The core app needs no permissions; 
 | No charger | NiteStand Quick Settings tile (one tap, also from the lock screen), opt-in lock-screen auto start, battery screen-on timeout |
 | Diagnostics | Live report of what the phone allows (screen saver, keyguard, permissions, sensor angles, StandBy state) with copyable event log |
 | Orientation | Physical orientation from the gravity sensor / accelerometer, both landscape directions, configurable tolerance, hysteresis and settle time |
-| Clock faces | 15 Apple StandBy-inspired faces in a live-preview gallery (5 digital, 4 analog, 6 expressive) with per-face colours — swipe on StandBy to switch |
+| Clock faces | 18 StandBy-inspired faces in a live-preview gallery (7 digital, 6 analog, 5 decorative) with per-face colours — swipe up/down on StandBy to switch |
+| Ambient experience | Composed entrance/exit, per-glyph minute transitions, directional face transitions, floating information page, invisible burn-in drift, night environment |
 | Widgets | Clock, Date, Battery (percentage + status), Next alarm, Weather (sample data) |
 | Display | Immersive full screen, sensor-landscape (auto 180° flip), keep-screen-on only while active |
 | Brightness | Auto / Low / Medium / High per-window override, ramped smoothly; Night mode (dim red, lowest brightness) Off / Always on / Automatic schedule, with a 2.5 s cross-fade |
@@ -33,6 +36,50 @@ Material 3). No network access, no accounts. The core app needs no permissions; 
 | Accessibility | TalkBack labels for clock and widgets, custom actions, 48 dp targets, reduced motion (app setting + system animator scale), high-contrast colours |
 
 ---
+
+## The ambient experience (v2)
+
+The active screen is one composition rather than an app screen. From back to front:
+- a true-black environment
+- a *stage* that carries the entrance and exit choreography and a sub-pixel burn-in drift
+- the pages: the clock, plus an optional floating information page
+- faint page dots that appear only when you touch the screen
+
+There are no bars, cards, buttons or labels. See [docs/REDESIGN_PLAN.md](docs/REDESIGN_PLAN.md)
+for the analysis and the architecture.
+
+| Moment | Behaviour |
+|---|---|
+| Enter | The window fades in from black. The clock then settles in (fade, 0.94→1 scale, 1.1 s emphasised deceleration), and secondary text follows. |
+| Minute change | Only the changed digits move. Each old digit rises 0.16 em and fades while the new one rises in, staggered over 700 ms. Unchanged digits stay still or glide if spacing changes. |
+| Seconds | A 220 ms fade. |
+| Analog hands | Glide along the shortest path. They never spin backwards through 12. |
+| Change face | Swipe up or down. The clock follows your finger with a soft rubber band, and the new face arrives from the direction you swiped. Changes made in the gallery cross-dissolve. |
+| Change colour | The colours blend over 450 ms. |
+| Pages | Swipe sideways to the information page (date, battery, alarm, sample weather). The page uses a depth transition: fade, recede and half-distance parallax. |
+| Touch | A tap shows the page dots and a faint "Double-tap to exit" for about 3 s. A double tap, Back or the tile fades the stage out, then the window closes with a fade. |
+| Night | The style interpolates over 2.5 s into a muted red environment with three opacity levels (time ≈ 0.86, secondary ≈ 0.48, metadata ≈ 0.2). Brightness ramps down to the minimum. All motion runs 1.6× slower. |
+| Burn-in | Every 45 s (configurable) the stage drifts at most 14 dp along a deterministic path, with an 8 s ease-in-out (13 s at night). The movement is sub-pixel, so it never visibly steps. |
+
+![Minute transition](docs/images/glyph-transition.jpg)
+
+![Information page](docs/images/info-page.jpg)
+
+**Typography.** All digital faces use one renderer (`TimeText`):
+- It uses proportional lining figures, so a "1" no longer sits in a wide cell.
+- Its size is constant, scaled to the widest possible time, so the clock never resizes when the
+  digits change.
+- It centres the digits optically using their real glyph bounds.
+- It draws the colon as two round dots sized from the stroke weight and centred on the digits.
+- It stacks AM/PM (aligned to the digit top) over seconds (aligned to the baseline).
+
+**Performance.** There are no continuous animations. Frames are produced only during transitions:
+- 0.7 s per minute change
+- about 8 s per burn-in move
+- while you interact
+
+Animated values are read in draw or layer lambdas, so animating does not recompose the screen.
+Paints are reused between frames. All timers and sensors are bound to the lifecycle.
 
 ## Clock faces
 
@@ -46,28 +93,33 @@ Canvas or with native text: there are no images, videos or prerecorded animation
 
 | Category | Face | Character | Colours |
 |---|---|---|---|
-| Digital | **StandBy** (default) | Huge light rounded digits, nothing else | all 9 |
-| Digital | Color | Two-tone gradient digits | 7 colourful palettes |
-| Digital | Minimal | Thin geometric numerals, tiny tracked date | white, warm white, orange, blue |
-| Digital | Rounded Bold | Heavy rounded digits, accent date | all 9 |
-| Digital | World | Chosen city + optional second zone with offset | 5 |
-| Analog | Analog | Rounded numerals 1–12, watch-style hands | 6 (accent) |
-| Analog | Analog Minimal | Twelve hairline marks, thin hands | white, warm white |
-| Analog | Analog Modern | Dots and bars, bold skeleton hands | 7 (accent) |
-| Analog | Analog Elegant | Serif Roman numerals, tapered hands | 3 |
-| Expressive | Bubble | Heavy rounded numerals, per-digit colours | 7 |
-| Expressive | Serif | High-contrast display serif | 4 |
-| Expressive | Line | Hairline numerals over a line that fills each hour | 5 |
-| Expressive | Calendar | Weekday, big day number, month, time | 4 |
-| Expressive | Retro | Seven-segment LED | 5 LED colours |
-| Expressive | Ambient | Small and very dim | fixed |
+| Digital | **Large** (default) | Huge light rounded digits, nothing else | all 9 |
+| Digital | Large Rounded | Heavy rounded digits, accent date | all 9 |
+| Digital | Colorful | Heavy rounded numerals, per-digit colours | 7 |
+| Digital | Gradient | Two-tone gradient digits | 7 |
+| Digital | Minimal | Thin geometric numerals, tiny tracked date | 4 |
+| Digital | World Clock | City + optional second zone with offset | 5 |
+| Digital | Date | Weekday, big day number, month, time | 4 |
+| Analog | Classic | Rounded numerals 1–12, watch-style hands | 6 |
+| Analog | Minimal | Twelve hairline marks, thin hands | 2 |
+| Analog | Modern | Dots and bars, bold skeleton hands | 7 |
+| Analog | Elegant | Serif Roman numerals, tapered hands | 3 |
+| Analog | Large Hands | No dial, two generous hands | 6 |
+| Analog | Thin Line | Hairline ring that fills with the hour | 5 |
+| Decorative | Retro | Seven-segment LED | 5 |
+| Decorative | Orbit | Thin hour numeral, minutes orbiting a ring | 6 |
+| Decorative | Editorial | High-contrast display serif | 4 |
+| Decorative | Hairline | Hairline numerals over an hour line | 5 |
+| Decorative | Ambient | Small and very dim | fixed |
 
-Night mode turns every face into StandBy-style dim red on black:
+Night mode turns every face into a muted, three-level red environment:
 
 ![Night mode](docs/images/clock-faces-night.jpg)
 
 **How it is built** (`clock/`, `ui/clock/`):
 
+* Every face implements `ClockFace` (`ui/clock/ClockFace.kt`) and is registered in `ClockFaces`.
+  A face is an independent composition that receives a `ClockState` (time data + animated style).
 * `ClockFaceCatalog` declares, per face, its category, allowed `ClockPalette`s, and whether it
   supports a date, seconds or AM/PM, the side panel or world time. Settings, the gallery and the
   renderer read the same specification.
@@ -80,8 +132,7 @@ Night mode turns every face into StandBy-style dim red on black:
   between frames.
 * `StandByStyle` derives colours from the palette and interpolates towards night red, which gives
   the smooth night transition.
-* Adding a face takes three steps: an enum entry, a `ClockFaceSpec`, and a composable in the
-  `ClockFace` dispatcher.
+* Adding a face takes three steps: an enum entry, a `ClockFaceSpec`, and a `ClockFace` registration.
 
 ### Fonts and licences
 

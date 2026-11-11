@@ -1,15 +1,23 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: v1.2.0 — Apple StandBy-inspired clock gallery
+Phase: v2.0.0 — premium ambient StandBy redesign
 
 ## Current status
-- Overall: v1.2.0 implemented and verified in the build environment (JVM + Robolectric screenshot
-  review of every face, day/night, 12/24h, seconds, portrait). Not yet seen on the physical device.
+- Overall: v2.0.0 implemented and verified in the build environment (JVM tests, Robolectric
+  screenshot review incl. transition frames). NOT yet seen on the physical device; frame rate and
+  CPU not measurable here (ONEPLUS_TESTING.md test 14 measures them).
+- v2.0.0 work: see docs/REDESIGN_PLAN.md. Stage composition (entrance/exit, burn-in drift, pages),
+  TimeText v2 (per-glyph transitions, drawn colon, constant scale, proportional figures, no
+  first-frame flash), ClockFace interface + registry, 3 new faces (Large Hands, Thin Line, Orbit),
+  animated style (colour + night environment with 3-level hierarchy), motion tokens, floating info
+  page, custom window animations, grouped settings, Night brightness level.
+- Previous (v1.2.0):
 - Last completed task: clock-face gallery (15 faces), palette colour system, central formatting
   (AM/PM, date styles), smooth night transition, brightness ramp, settings migration v2.
 - Current task: none.
-- Next task: user runs ONEPLUS_TESTING.md test 13 on the OnePlus 12R (photos in a dark room) and
+- Next task: user runs ONEPLUS_TESTING.md tests 13–14 (incl. gfxinfo frame stats); then tune
+  durations/sizes from real-panel feedback. Previously: test 13 on the OnePlus 12R (photos in a dark room) and
   reports any face that needs size/brightness/spacing tuning on the real panel.
 
 ## v1.2.0 clock-face work
@@ -59,8 +67,8 @@ Phase: v1.2.0 — Apple StandBy-inspired clock gallery
 
 ## Build
 - Debug APK: SUCCESS
-- Release APK 1.2.0 (versionCode 3, R8, v2-signed, same certificate as 1.0.0/1.1.0): SUCCESS
-- Unit + screenshot tests: PASSING (123/123; screenshots in app/build/screenshots)
+- Release APK 2.0.0 (versionCode 4, R8, v2-signed, same certificate as earlier versions): SUCCESS
+- Unit + screenshot tests: PASSING (133/133; screenshots in app/build/screenshots)
 - Lint: 0 errors, 0 warnings
 - Android tests: compile SUCCESS, not run
 
