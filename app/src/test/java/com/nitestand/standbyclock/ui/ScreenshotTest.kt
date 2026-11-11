@@ -52,7 +52,7 @@ class ScreenshotTest {
     val compose = createComposeRule()
 
     private val context = ApplicationProvider.getApplicationContext<StandByClockApp>()
-    private val fixedTime = ZonedDateTime.of(2026, 9, 14, 5, 53, 7, 0, ZoneId.systemDefault())
+    private val fixedTime = ZonedDateTime.of(2026, 11, 11, 22, 42, 37, 0, ZoneId.systemDefault())
 
     private val sources = WidgetDataSources(
         battery = flowOf(BatterySnapshot(85, ChargingStatus.CHARGING, PowerSource.AC)),
@@ -73,9 +73,17 @@ class ScreenshotTest {
         forced = false,
     )
 
-    private fun capture(name: String, content: @Composable () -> Unit) {
-        compose.setContent { StandByClockTheme { content() } }
-        compose.mainClock.advanceTimeBy(2_000)
+    private val content = androidx.compose.runtime.mutableStateOf<(@Composable () -> Unit)?>(null)
+    private var contentSet = false
+
+    private fun capture(name: String, body: @Composable () -> Unit) {
+        content.value = body
+        if (!contentSet) {
+            compose.setContent { StandByClockTheme { content.value?.invoke() } }
+            contentSet = true
+        }
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(4_000)
         compose.waitForIdle()
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
         val dir = File("build/screenshots").apply { mkdirs() }
@@ -83,44 +91,75 @@ class ScreenshotTest {
     }
 
     private fun standBy(name: String, settings: StandBySettings, night: Boolean = false) = capture(name) {
-        val state = StandByUiState(activation(StandByState.ACTIVE), settings, night)
-        StandByScreen(state, sources, {}, {}, systemReduceMotion = true) {}
+        val state = StandByUiState(activation(StandByState.ACTIVE), settings.copy(burnInProtection = false), night)
+        // key() gives every capture a fresh composition (no gesture hint carried over).
+        androidx.compose.runtime.key(name) {
+            StandByScreen(state, sources, {}, {}, systemReduceMotion = true) {}
+        }
+    }
+
+    /** OnePlus 12R landscape: 2780 × 1264 px at ~450 dpi ≈ 988 × 449 dp. */
+    private fun renderAllFaces(prefix: String, base: StandBySettings, night: Boolean) {
+        for (face in ClockTheme.entries) {
+            standBy("${prefix}_${face.name.lowercase()}", base.copy(clockTheme = face), night)
+        }
     }
 
     @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun classic() = standBy("standby_classic", StandBySettings(hourFormat = com.nitestand.standbyclock.clock.HourFormat.TWENTY_FOUR_HOUR))
-
-    @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun classicWithWeatherAnd12h() = standBy(
-        "standby_classic_12h_weather",
-        StandBySettings(hourFormat = com.nitestand.standbyclock.clock.HourFormat.TWELVE_HOUR, showWeatherWidget = true, showSeconds = true),
+    @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
+    fun allFacesDay24h() = renderAllFaces(
+        "face_day",
+        StandBySettings(hourFormat = com.nitestand.standbyclock.clock.HourFormat.TWENTY_FOUR_HOUR, worldPrimaryCity = "hyderabad"),
+        night = false,
     )
 
     @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun minimalNoPanel() = standBy("standby_minimal_nopanel", StandBySettings(clockTheme = ClockTheme.MINIMAL, showPanel = false))
+    @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
+    fun allFacesNight() = renderAllFaces(
+        "face_night",
+        StandBySettings(hourFormat = com.nitestand.standbyclock.clock.HourFormat.TWENTY_FOUR_HOUR, worldPrimaryCity = "hyderabad"),
+        night = true,
+    )
 
     @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun retro() = standBy("standby_retro", StandBySettings(clockTheme = ClockTheme.RETRO))
+    @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
+    fun twelveHourWithSeconds() {
+        val s = StandBySettings(hourFormat = com.nitestand.standbyclock.clock.HourFormat.TWELVE_HOUR, showSeconds = true)
+        for (face in listOf(ClockTheme.DIGITAL_LARGE, ClockTheme.DIGITAL_COLOR, ClockTheme.MINIMAL, ClockTheme.SERIF, ClockTheme.ANALOG, ClockTheme.ANALOG_ELEGANT, ClockTheme.LINE)) {
+            standBy("face_12h_${face.name.lowercase()}", s.copy(clockTheme = face))
+        }
+        standBy("face_12h_noampm_digital_large", s.copy(clockTheme = ClockTheme.DIGITAL_LARGE, showAmPm = false, showSeconds = false))
+    }
 
     @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun retroNoPanelSeconds() = standBy("standby_retro_full", StandBySettings(clockTheme = ClockTheme.RETRO, showPanel = false, showSeconds = true))
+    @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
+    fun colorsAndPanel() {
+        val s = StandBySettings(hourFormat = com.nitestand.standbyclock.clock.HourFormat.TWENTY_FOUR_HOUR)
+        standBy("color_large_orange", s.copy(faceColors = mapOf(ClockTheme.DIGITAL_LARGE to com.nitestand.standbyclock.clock.ClockPalette.SOFT_ORANGE)))
+        standBy("color_gradient_blue", s.copy(clockTheme = ClockTheme.DIGITAL_COLOR, faceColors = mapOf(ClockTheme.DIGITAL_COLOR to com.nitestand.standbyclock.clock.ClockPalette.BLUE)))
+        standBy("color_bubble_green", s.copy(clockTheme = ClockTheme.BUBBLE, faceColors = mapOf(ClockTheme.BUBBLE to com.nitestand.standbyclock.clock.ClockPalette.GREEN)))
+        standBy("panel_large", s.copy(showPanel = true))
+    }
 
     @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun analog() = standBy("standby_analog", StandBySettings(clockTheme = ClockTheme.ANALOG, showSeconds = true))
+    @Config(qualifiers = "w449dp-h988dp-port-xhdpi")
+    fun portraitFaces() {
+        for (face in listOf(ClockTheme.DIGITAL_LARGE, ClockTheme.ANALOG, ClockTheme.CALENDAR, ClockTheme.WORLD)) {
+            standBy("portrait_${face.name.lowercase()}", StandBySettings(clockTheme = face))
+        }
+    }
 
     @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun ambient() = standBy("standby_ambient", StandBySettings(clockTheme = ClockTheme.AMBIENT))
-
-    @Test
-    @Config(qualifiers = "w800dp-h360dp-land-xhdpi")
-    fun night() = standBy("standby_night", StandBySettings(), night = true)
+    @Config(qualifiers = "w400dp-h1800dp-port-xhdpi")
+    fun gallery() = capture("gallery") {
+        com.nitestand.standbyclock.ui.gallery.ClockGalleryScreen(
+            settings = StandBySettings(clockTheme = ClockTheme.DIGITAL_LARGE),
+            sources = sources,
+            onUpdate = {},
+            onBack = {},
+            onPreviewFullScreen = {},
+        )
+    }
 
     @Test
     @Config(qualifiers = "w800dp-h360dp-land-xhdpi")

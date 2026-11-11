@@ -121,7 +121,7 @@ class StandByControllerTest {
         val c = controller()
         c.cycleTheme(1)
         runCurrent()
-        assertEquals(com.nitestand.standbyclock.clock.ClockTheme.MINIMAL, settings.current().clockTheme)
+        assertEquals(com.nitestand.standbyclock.clock.ClockTheme.DIGITAL_COLOR, settings.current().clockTheme)
     }
 
     @Test
