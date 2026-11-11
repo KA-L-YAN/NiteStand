@@ -3,7 +3,29 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        StandBy Clock requests NO runtime or install-time permissions:
+        Permissions used ONLY by the opt-in "Lock-screen auto start" feature (off by default):
+        - POST_NOTIFICATIONS: foreground-service notification and the StandBy launch notification
+        - FOREGROUND_SERVICE(+_SPECIAL_USE): Android only lets apps observe the phone in the background
+          from a foreground service
+        - USE_FULL_SCREEN_INTENT: the sanctioned way to show an activity over the lock screen from
+          the background (user can revoke it on Android 14+)
+        - RECEIVE_BOOT_COMPLETED: restart the watcher after reboot if the user enabled it
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Lets diagnostics check whether this device has a screen saver settings page. -->
+    <queries>
+        <intent>
+            <action android:name="android.settings.DREAM_SETTINGS" />
+        </intent>
+    </queries>
+
+    <!--
+        Everything else needs no permission:
         - battery state: sticky ACTION_BATTERY_CHANGED broadcast (no permission)
         - orientation: accelerometer / gravity sensor (no permission at <= 200 Hz)
         - next alarm: AlarmManager.getNextAlarmClock() (no permission)
@@ -64,7 +86,26 @@
                 android:resource="@xml/standby_dream" />
         </service>
 
-        <!-- Quick Settings tile to open StandBy. -->
+        <!-- Opt-in lock-screen watcher (see LockScreenWatcherService). -->
+        <service
+            android:name=".lockscreen.LockScreenWatcherService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Shows a user-enabled bedside clock over the lock screen when the locked phone is woken while horizontal. Uses the motion sensor only while the lock screen is on." />
+        </service>
+
+        <receiver
+            android:name=".lockscreen.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- "NiteStand" Quick Settings tile: one-tap StandBy, no charger needed. -->
         <service
             android:name=".standby.StandByTileService"
             android:exported="true"

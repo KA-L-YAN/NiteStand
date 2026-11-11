@@ -25,6 +25,10 @@ import com.nitestand.standbyclock.ui.standby.StandByScreen
 import com.nitestand.standbyclock.ui.standby.WaitingContent
 import com.nitestand.standbyclock.ui.theme.StandByClockTheme
 import com.nitestand.standbyclock.util.isSystemReduceMotion
+import com.nitestand.standbyclock.diagnostics.EventLog
+import com.nitestand.standbyclock.lockscreen.StandByNotifications
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
@@ -52,6 +56,7 @@ class StandByActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyShowWhenLocked(true)
+        handleLaunchIntent(intent)
         ShortcutManagerCompat.reportShortcutUsed(this, SHORTCUT_ID)
 
         onBackPressedDispatcher.addCallback(this) { exitStandBy() }
@@ -80,14 +85,41 @@ class StandByActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // Re-apply window flags (and restart the battery timer) every time the screen comes back.
+                appliedActive = null
+                appliedBrightness = null
+                launch { StandBySession.exitRequests.collect { exitStandBy() } }
                 viewModel.uiState.filterNotNull().collect(::applyWindowState)
             }
         }
     }
 
+    override fun onDestroy() {
+        StandBySession.ended(StandBySurface.ACTIVITY)
+        super.onDestroy()
+    }
+
+    /**
+     * Launched by the lock-screen watcher: allow this activity to turn the screen on (needed if the
+     * screen went off between the trigger and the launch) and remove the launch notification.
+     */
+    private fun handleLaunchIntent(intent: Intent) {
+        if (intent.getBooleanExtra(EXTRA_FROM_LOCK_SCREEN, false)) {
+            EventLog.log("StandBy opened from lock-screen watcher")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                setTurnScreenOn(true)
+            } else {
+                @Suppress("DEPRECATION")
+                window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+            }
+        }
+        StandByNotifications.cancelLaunch(this)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleLaunchIntent(intent)
         if (intent.getBooleanExtra(EXTRA_FORCE, false)) viewModel.start(force = true)
     }
 
@@ -95,8 +127,11 @@ class StandByActivity : ComponentActivity() {
         applyShowWhenLocked(state.settings.showOnLockScreen)
 
         val active = state.activation.isActive
+        StandBySession.report(StandBySurface.ACTIVITY, state.activation.state)
+        updateBatteryTimer(state)
         if (active != appliedActive) {
             appliedActive = active
+            EventLog.log("StandBy activity: ${state.activation.state} (power=${state.activation.charging}, orientation=${state.activation.orientation})")
             val insets = WindowInsetsControllerCompat(window, window.decorView)
             if (active) {
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -121,6 +156,33 @@ class StandByActivity : ComponentActivity() {
         }
     }
 
+    private var batteryTimer: Job? = null
+    private var batteryTimerKey: Pair<Boolean, Int>? = null
+
+    /**
+     * On battery, FLAG_KEEP_SCREEN_ON would otherwise drain the battery indefinitely. After the
+     * configured time the flag is released so the normal system screen timeout turns the screen
+     * off; waking the phone again shows StandBy again with a fresh timer.
+     */
+    private fun updateBatteryTimer(state: StandByUiState) {
+        val onBattery = state.activation.isActive && state.activation.charging?.isPowered != true
+        val minutes = state.settings.batteryTimeoutMinutes
+        val key = (onBattery && minutes > 0) to minutes
+        if (key == batteryTimerKey && batteryTimer?.isActive == true) return
+        batteryTimerKey = key
+        batteryTimer?.cancel()
+        batteryTimer = null
+        if (key.first) {
+            batteryTimer = lifecycleScope.launch {
+                delay(minutes * 60_000L)
+                EventLog.log("StandBy: battery timeout ($minutes min) reached, releasing keep-screen-on")
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        } else if (state.activation.isActive) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     private fun applyShowWhenLocked(show: Boolean) {
         if (show == appliedShowWhenLocked) return
         appliedShowWhenLocked = show
@@ -141,7 +203,9 @@ class StandByActivity : ComponentActivity() {
      * StandBy never dismisses or bypasses it.
      */
     private fun exitStandBy() {
+        EventLog.log("StandBy activity: user exit")
         viewModel.exit()
+        StandBySession.ended(StandBySurface.ACTIVITY)
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         finish()
     }
@@ -149,11 +213,16 @@ class StandByActivity : ComponentActivity() {
     companion object {
         const val SHORTCUT_ID = "start_standby"
         const val EXTRA_FORCE = "com.nitestand.standbyclock.extra.FORCE"
+        const val EXTRA_FROM_LOCK_SCREEN = "com.nitestand.standbyclock.extra.FROM_LOCK_SCREEN"
 
-        /** @param force start immediately regardless of power/orientation (preview / manual). */
-        fun intent(context: Context, force: Boolean = false): Intent =
+        /**
+         * @param force start immediately regardless of power/orientation (preview / manual / tile).
+         * @param fromLockScreen launched by the lock-screen watcher's full-screen intent.
+         */
+        fun intent(context: Context, force: Boolean = false, fromLockScreen: Boolean = false): Intent =
             Intent(context, StandByActivity::class.java)
                 .setAction(Intent.ACTION_VIEW)
                 .putExtra(EXTRA_FORCE, force)
+                .putExtra(EXTRA_FROM_LOCK_SCREEN, fromLockScreen)
     }
 }

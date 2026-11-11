@@ -19,6 +19,10 @@ data class StandBySettings(
     // Activation
     val activationMode: ActivationMode = ActivationMode.CHARGING_AND_LANDSCAPE,
     val orientationSensitivity: OrientationSensitivity = OrientationSensitivity.NORMAL,
+    /** Opt-in foreground service that starts StandBy on the lock screen (see LockScreenWatcherService). */
+    val lockScreenWatcher: Boolean = false,
+    /** On battery, keep the screen on this long before letting the system timeout apply; 0 = until exit. */
+    val batteryTimeoutMinutes: Int = 30,
     // Clock
     val clockTheme: ClockTheme = ClockTheme.CLASSIC,
     val hourFormat: HourFormat = HourFormat.SYSTEM,
@@ -46,5 +50,6 @@ data class StandBySettings(
 
     companion object {
         val BURN_IN_INTERVALS = listOf(30, 45, 60, 120)
+        val BATTERY_TIMEOUTS = listOf(5, 15, 30, 60, 0)
     }
 }

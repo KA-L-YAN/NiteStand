@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nitestand.standbyclock.appContainer
+import com.nitestand.standbyclock.diagnostics.EventLog
 import com.nitestand.standbyclock.display.BrightnessPolicy
 import com.nitestand.standbyclock.ui.standby.DreamIdleContent
 import com.nitestand.standbyclock.ui.standby.StandByScreen
@@ -46,7 +47,7 @@ class StandByDreamService : DreamService() {
         val dreamScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         scope = dreamScope
         val container = appContainer
-        val controller = StandByViewModel.createController(container, dreamScope, forceActive = false, alwaysAutoStart = true)
+        val controller = StandByViewModel.createController(container, dreamScope, forceActive = false, dream = true)
 
         host.create()
         val view = ComposeView(this).apply {
@@ -74,7 +75,9 @@ class StandByDreamService : DreamService() {
         setContentView(view)
 
         dreamScope.launch {
+            launch { StandBySession.exitRequests.collect { controller.requestExit(); wakeUp() } }
             controller.uiState.filterNotNull().collect { state ->
+                StandBySession.report(StandBySurface.SCREEN_SAVER, state.activation.state)
                 applyDisplay(state)
                 handleIdle(state, dreamScope)
             }
@@ -83,6 +86,7 @@ class StandByDreamService : DreamService() {
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()
+        EventLog.log("Screen saver started by the system")
         host.start()
         host.resume()
     }
@@ -94,6 +98,8 @@ class StandByDreamService : DreamService() {
     }
 
     override fun onDetachedFromWindow() {
+        StandBySession.ended(StandBySurface.SCREEN_SAVER)
+        EventLog.log("Screen saver ended")
         host.destroy()
         scope?.cancel()
         scope = null

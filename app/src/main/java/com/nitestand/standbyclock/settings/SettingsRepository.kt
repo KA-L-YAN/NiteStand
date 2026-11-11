@@ -43,6 +43,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         nightStartMinutes = nightStartMinutes.coerceIn(0, MINUTES_PER_DAY - 1),
         nightEndMinutes = nightEndMinutes.coerceIn(0, MINUTES_PER_DAY - 1),
         burnInIntervalSeconds = burnInIntervalSeconds.coerceIn(15, 600),
+        batteryTimeoutMinutes = batteryTimeoutMinutes.coerceIn(0, 24 * 60),
     )
 
     internal companion object Keys {
@@ -53,6 +54,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val LOCK_SCREEN = booleanPreferencesKey("show_on_lock_screen")
         val ACTIVATION_MODE = stringPreferencesKey("activation_mode")
         val SENSITIVITY = stringPreferencesKey("orientation_sensitivity")
+        val LOCK_SCREEN_WATCHER = booleanPreferencesKey("lock_screen_watcher")
+        val BATTERY_TIMEOUT = intPreferencesKey("battery_timeout_minutes")
         val CLOCK_THEME = stringPreferencesKey("clock_theme")
         val HOUR_FORMAT = stringPreferencesKey("hour_format")
         val SHOW_SECONDS = booleanPreferencesKey("show_seconds")
@@ -82,6 +85,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 showOnLockScreen = prefs[LOCK_SCREEN] ?: d.showOnLockScreen,
                 activationMode = prefs.enumOf(ACTIVATION_MODE, d.activationMode),
                 orientationSensitivity = prefs.enumOf(SENSITIVITY, d.orientationSensitivity),
+                lockScreenWatcher = prefs[LOCK_SCREEN_WATCHER] ?: d.lockScreenWatcher,
+                batteryTimeoutMinutes = prefs[BATTERY_TIMEOUT] ?: d.batteryTimeoutMinutes,
                 clockTheme = prefs.enumOf(CLOCK_THEME, d.clockTheme),
                 hourFormat = prefs.enumOf(HOUR_FORMAT, d.hourFormat),
                 showSeconds = prefs[SHOW_SECONDS] ?: d.showSeconds,
@@ -108,6 +113,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             prefs[LOCK_SCREEN] = s.showOnLockScreen
             prefs[ACTIVATION_MODE] = s.activationMode.name
             prefs[SENSITIVITY] = s.orientationSensitivity.name
+            prefs[LOCK_SCREEN_WATCHER] = s.lockScreenWatcher
+            prefs[BATTERY_TIMEOUT] = s.batteryTimeoutMinutes
             prefs[CLOCK_THEME] = s.clockTheme.name
             prefs[HOUR_FORMAT] = s.hourFormat.name
             prefs[SHOW_SECONDS] = s.showSeconds
