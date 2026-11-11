@@ -11,6 +11,8 @@ import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -48,6 +50,9 @@ class StandByActivity : ComponentActivity() {
         StandByViewModel.factory(appContainer, forceActive = intent.getBooleanExtra(EXTRA_FORCE, false))
     }
 
+    /** Set when StandBy should leave: the screen plays its exit animation, then [finishStandBy] runs. */
+    private var exitRequested by mutableStateOf(false)
+
     private var appliedActive: Boolean? = null
     private var appliedBrightness: Float? = null
     private var appliedShowWhenLocked: Boolean? = null
@@ -68,15 +73,16 @@ class StandByActivity : ComponentActivity() {
                 StandByScreen(
                     state = current,
                     sources = appContainer.widgetDataSources,
-                    onExit = ::exitStandBy,
+                    onExit = ::finishStandBy,
                     onCycleTheme = viewModel::cycleTheme,
                     systemReduceMotion = isSystemReduceMotion(),
+                    exitRequested = exitRequested,
                     inactiveContent = {
                         WaitingContent(
                             state = current,
                             sources = appContainer.widgetDataSources,
                             onStart = viewModel::start,
-                            onClose = ::exitStandBy,
+                            onClose = ::finishStandBy,
                         )
                     },
                 )
@@ -224,11 +230,22 @@ class StandByActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Leaves StandBy. If the device is locked, finishing simply reveals the secure keyguard —
-     * StandBy never dismisses or bypasses it.
-     */
+    /** Back / tile: run the same fade-out as a double tap when the clock is showing. */
     private fun exitStandBy() {
+        if (viewModel.uiState.value?.activation?.isActive == true && !exitRequested) {
+            exitRequested = true
+        } else {
+            finishStandBy()
+        }
+    }
+
+    /**
+     * Leaves StandBy after the exit animation. If the device is locked, finishing simply reveals
+     * the secure keyguard — StandBy never dismisses or bypasses it. The window closes with a short
+     * fade (Animation.NiteStand) instead of the default activity transition.
+     */
+    private fun finishStandBy() {
+        if (isFinishing) return
         EventLog.log("StandBy activity: user exit")
         viewModel.exit()
         StandBySession.ended(StandBySurface.ACTIVITY)

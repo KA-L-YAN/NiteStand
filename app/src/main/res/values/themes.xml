@@ -12,6 +12,20 @@
 
     <style name="Theme.StandByClock.StandBy">
         <item name="android:windowFullscreen">false</item>
-        <item name="android:windowAnimationStyle">@android:style/Animation.Activity</item>
+        <item name="android:windowAnimationStyle">@style/Animation.NiteStand</item>
+    </style>
+
+    <!-- Window transitions for StandBy: fade from / to black, never the default slide. -->
+    <style name="Animation.NiteStand" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/standby_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/standby_hold</item>
+        <item name="android:activityCloseEnterAnimation">@anim/standby_hold</item>
+        <item name="android:activityCloseExitAnimation">@anim/standby_exit</item>
+        <item name="android:taskOpenEnterAnimation">@anim/standby_enter</item>
+        <item name="android:taskOpenExitAnimation">@anim/standby_hold</item>
+        <item name="android:taskCloseEnterAnimation">@anim/standby_hold</item>
+        <item name="android:taskCloseExitAnimation">@anim/standby_exit</item>
+        <item name="android:taskToFrontEnterAnimation">@anim/standby_enter</item>
+        <item name="android:taskToBackExitAnimation">@anim/standby_exit</item>
     </style>
 </resources>

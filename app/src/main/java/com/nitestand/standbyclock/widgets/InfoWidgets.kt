@@ -10,10 +10,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -113,48 +111,21 @@ object BatteryWidget : StandByWidget<BatterySnapshot> {
         }
     }
 
+    /** Thin charge ring instead of an icon: reads as part of the typography. */
     @Composable
     private fun BatteryGlyph(data: BatterySnapshot, style: StandByStyle) {
         val level = (data.levelPercent ?: 0) / 100f
-        Canvas(Modifier.size(width = 40.dp, height = 20.dp)) {
-            val stroke = 2.dp.toPx()
-            val tip = 3.dp.toPx()
-            val bodyW = size.width - tip
-            drawRoundRect(
-                color = style.secondary,
-                topLeft = Offset(stroke / 2, stroke / 2),
-                size = Size(bodyW - stroke, size.height - stroke),
-                cornerRadius = CornerRadius(4.dp.toPx()),
-                style = Stroke(stroke),
+        val scale = com.nitestand.standbyclock.ui.standby.LocalPanelScale.current
+        Canvas(Modifier.size(24.dp * scale)) {
+            val stroke = 2.2.dp.toPx() * scale
+            val inset = stroke / 2
+            val arcSize = Size(size.width - stroke, size.height - stroke)
+            drawArc(style.secondary.copy(alpha = style.secondary.alpha * 0.35f), -90f, 360f, false, Offset(inset, inset), arcSize, style = Stroke(stroke))
+            drawArc(
+                if (data.status.isPowered) style.accent else style.primary,
+                -90f, 360f * level.coerceIn(0f, 1f), false, Offset(inset, inset), arcSize,
+                style = Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
             )
-            drawRoundRect(
-                color = style.secondary,
-                topLeft = Offset(bodyW, size.height * 0.32f),
-                size = Size(tip, size.height * 0.36f),
-                cornerRadius = CornerRadius(1.5.dp.toPx()),
-            )
-            val inset = stroke * 2
-            val fillW = (bodyW - inset * 2) * level.coerceIn(0f, 1f)
-            drawRoundRect(
-                color = if (data.status.isPowered) style.accent else style.primary,
-                topLeft = Offset(inset, inset),
-                size = Size(fillW, size.height - inset * 2),
-                cornerRadius = CornerRadius(2.dp.toPx()),
-            )
-            if (data.status == ChargingStatus.CHARGING) {
-                val bolt = Path().apply {
-                    val cx = bodyW / 2
-                    val h = size.height
-                    moveTo(cx + h * 0.08f, h * 0.12f)
-                    lineTo(cx - h * 0.22f, h * 0.56f)
-                    lineTo(cx - h * 0.02f, h * 0.56f)
-                    lineTo(cx - h * 0.08f, h * 0.88f)
-                    lineTo(cx + h * 0.22f, h * 0.44f)
-                    lineTo(cx + h * 0.02f, h * 0.44f)
-                    close()
-                }
-                drawPath(bolt, color = style.background)
-            }
         }
     }
 }
