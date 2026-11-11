@@ -5,7 +5,8 @@
 Put your phone on a charger, turn it sideways on a stand, and it becomes a large, OLED-friendly
 clock with optional side panels (date, battery, next alarm, weather placeholder) — similar in
 concept to iPhone StandBy, built entirely with native Android APIs (Kotlin, Jetpack Compose,
-Material 3). No network access, no accounts, no permissions.
+Material 3). No network access, no accounts. The core app needs no permissions; only the opt-in
+"Lock-screen auto start" feature asks for notification permissions (see [Permissions](#permissions)).
 
 > Honest summary: Android does **not** let an ordinary app take over a locked phone on its own the
 > moment it is plugged in. StandBy Clock therefore offers the two closest *legitimate* mechanisms —
@@ -18,7 +19,9 @@ Material 3). No network access, no accounts, no permissions.
 
 | Area | What you get |
 |---|---|
-| Activation | Charging + landscape (default), charging only, landscape only, or manual |
+| Activation | Charging + landscape (default), charging only, landscape only (no charger), manual, screen saver, Quick Settings tile |
+| No charger | NiteStand Quick Settings tile (one tap, also from the lock screen), opt-in lock-screen auto start, battery screen-on timeout |
+| Diagnostics | Live report of what the phone allows (screen saver, keyguard, permissions, sensor angles, StandBy state) with copyable event log |
 | Orientation | Physical orientation from the gravity sensor / accelerometer, both landscape directions, configurable tolerance, hysteresis and settle time |
 | Clock designs | Classic, Minimal, Retro (native seven-segment), Analog, Ambient — swipe to switch |
 | Widgets | Clock, Date, Battery (percentage + status), Next alarm, Weather (sample data) |
@@ -26,7 +29,7 @@ Material 3). No network access, no accounts, no permissions.
 | Brightness | Auto / Low / Medium / High per-window override; Night mode (red, dimmest) on/off/scheduled |
 | Burn-in | Slow pixel shift (a few dp every 30–120 s) plus occasional re-anchoring |
 | Exit | Double-tap, back gesture, or TalkBack "Exit StandBy" action |
-| Extras | Screen saver (Dream), Quick Settings tile, launcher shortcut |
+| Extras | Screen saver (Dream), "NiteStand" Quick Settings tile, launcher shortcut |
 | Accessibility | TalkBack labels for clock and widgets, custom actions, 48 dp targets, reduced motion (app setting + system animator scale), high-contrast colours |
 
 ---
@@ -52,6 +55,17 @@ States:
 | `WAITING_FOR_LANDSCAPE` | Power requirement met, phone not in landscape |
 | `READY` | All conditions met but not shown (auto start off, or the user exited) |
 | `ACTIVE` | StandBy is on screen |
+
+Activation modes (Settings › Activation mode):
+
+| Mode | Starts when | Charger needed |
+|---|---|---|
+| Charging + landscape (default) | StandBy is open (or lock-screen auto start is on) and the phone is charging and horizontal | Yes |
+| Charging only | … and the phone is charging, any position | Yes |
+| Landscape only | … and the phone is horizontal | **No** |
+| Manual | You tap Start StandBy in the app | No |
+| Screen saver | Android starts its screen saver (only while charging/docked — Android rule) | Effectively yes |
+| Quick Settings tile | You tap the NiteStand tile | No |
 
 Rules:
 
@@ -110,21 +124,59 @@ Back leaves the screen saver, returning to the (still locked) lock screen.
 
 ---
 
+## StandBy without a charger
+
+**Goal:** put the phone horizontally and get StandBy, without a charger.
+
+**What Android allows, per mechanism:**
+
+| Mechanism | Works without charger? | Why |
+|---|---|---|
+| Screen saver (`DreamService`) | **No** on standard Android | The system only starts screen savers while charging or docked. Running on battery needs the OEM framework flag `config_dreamsEnabledOnBattery`, which apps cannot change. The AOSP "When to start" choices are *while charging / while docked / either / never*. |
+| Background app detects rotation and opens itself | **Not directly** | Since Android 9, idle background apps get no accelerometer events. Since Android 10, background activity starts are blocked. |
+| Foreground service + full-screen-intent notification | **Yes, opt-in (experimental)** | A foreground service may use sensors, and a full-screen intent is Android's sanctioned way to show an activity over the lock screen (alarm/call style). The user must allow notifications and, on Android 14+, full-screen notifications. |
+| `setShowWhenLocked()` / `setTurnScreenOn()` | Yes, for an activity that is launched | They let StandBy appear above the keyguard and wake the display when launched. They do not launch anything by themselves. |
+| Quick Settings tile | **Yes** | A user tap is a foreground action, so StandBy starts immediately. On the lock screen, the OEM decides whether tiles need unlocking. |
+| Accessibility service | Not used | Using an accessibility service for a clock would violate the accessibility API's purpose and Play policy. |
+
+**What NiteStand does:**
+
+1. **NiteStand tile.** One tap starts StandBy, no charger needed; tap again to close. Its
+   active/inactive state follows the display.
+2. **Lock-screen auto start (opt-in, experimental)**, in *Landscape only*, *Charging only* or
+   *Charging + landscape* mode.
+   * A foreground service with a silent notification listens for screen on/off and unlock broadcasts.
+   * The orientation sensor runs only while the phone is awake and locked.
+   * When the mode's conditions are met, it posts a full-screen-intent notification, and the
+     system shows StandBy above the lock screen. The phone stays locked.
+   * It fires once per wake/placement, so exiting does not reopen it until the phone is picked up
+     or the screen goes off.
+3. **Battery screen-on timeout.** On battery, StandBy keeps the screen on only for the chosen time
+   (default 30 min), then lets the system timeout turn it off.
+
+**Remaining hard limit:** while the screen is **off**, nothing can happen. Android gives no sensor
+data to an app whose device is asleep, unless it holds a wake lock all the time, which would drain
+the battery and is deliberately not done. So the user wakes the phone (power button, double-tap
+to wake), and StandBy follows within about a second. Apple's StandBy itself also only activates
+while charging.
+
 ## Android limitations
 
 These are platform rules, not missing features. StandBy Clock does not work around them.
 
-1. **No automatic takeover from the background.** Since Android 8, `ACTION_POWER_CONNECTED` is not
-   delivered to manifest receivers, and since Android 10 apps may not start activities from the
-   background. A third-party app therefore cannot pop up by itself on plug-in. The supported
-   alternatives are Mode A (keep StandBy open, then lock) and Mode B (screen saver).
-2. **No full-screen-intent hack.** `USE_FULL_SCREEN_INTENT` is reserved for calling and alarm apps
-   (Android 14+ requires special access and Play policy restricts it), and it would need a permanently
-   running foreground service. StandBy Clock deliberately does not use it.
-3. **No foreground service.** Watching the charger permanently would mean a persistent notification
-   and constant background cost. StandBy Clock uses no service besides the system-bound Dream and tile.
-4. **`setTurnScreenOn()` is not used.** There is no legitimate trigger that would launch StandBy while
-   the screen is off; turning the screen on uninvited would only waste power.
+1. **No automatic takeover from the background by default.** Since Android 8, `ACTION_POWER_CONNECTED`
+   is not delivered to manifest receivers, and since Android 10 apps may not start activities from
+   the background. Without the opt-in watcher, the supported paths are Mode A (keep StandBy open,
+   then lock), Mode B (screen saver) and the tile.
+2. **Full-screen intents are user-controlled.** The opt-in watcher relies on `USE_FULL_SCREEN_INTENT`.
+   On Android 14+ the user can deny it, and Google Play only grants it by default to calling and
+   alarm apps. A Play release would need the user to allow it manually. When it is denied, a
+   tappable heads-up notification is shown instead.
+3. **The watcher is a foreground service.** It shows a persistent (silent, minimised) notification,
+   and OEM battery managers (OxygenOS included) may stop it unless battery usage is
+   "Unrestricted". It is off by default.
+4. **`setTurnScreenOn()` is used only for watcher launches.** That covers the case where the screen
+   turns off between the trigger and the launch. StandBy never wakes the screen on its own.
 5. **Large screens (Android 16+).** Apps targeting API 36+ cannot lock orientation on displays
    ≥ 600 dp (tablets, unfolded foldables). The StandBy layout adapts to whatever orientation the
    system chooses.
@@ -155,7 +207,7 @@ in-app "Tips for your phone" card only points to where each OEM moved the releva
 | Google Pixel | Available (Display › Screen saver, "When to start: While charging") | Best experience. Pixel Tablet "Hub mode" is a separate system feature. |
 | Samsung (One UI) | Often available (Display › Screen saver), hidden on some builds | "Put app to sleep" / Deep sleeping apps can close StandBy — exempt it. |
 | Motorola | Usually available | — |
-| OnePlus (OxygenOS) | Varies by version | Use Mode A; allow in battery optimisation if needed. |
+| OnePlus (OxygenOS) | Varies by version (check Diagnostics › Screen saver) | Use the NiteStand tile or lock-screen auto start; set App info › Battery usage to *Unrestricted* for the watcher. See ONEPLUS_TESTING.md. |
 | Xiaomi / Redmi / POCO (MIUI, HyperOS) | Usually removed | Use Mode A; MIUI/HyperOS has an extra "Show on Lock screen" app permission that must be allowed. |
 | OPPO / realme (ColorOS) | Often hidden | Use Mode A; may need "Show on lock screen" allowed. |
 | vivo / iQOO (Funtouch, OriginOS) | Often hidden | Use Mode A; may need "Lock screen display" allowed. |
@@ -164,7 +216,17 @@ in-app "Tips for your phone" card only points to where each OEM moved the releva
 
 ## Permissions
 
-StandBy Clock **requests no permissions**.
+The core app needs **no permissions**. The opt-in *Lock-screen auto start* feature declares the
+following and only requests runtime consent when you turn it on:
+
+| Permission | Used for |
+|---|---|
+| `POST_NOTIFICATIONS` (runtime, Android 13+) | Service notification and the StandBy launch notification |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Observing the locked phone; no other service type fits |
+| `USE_FULL_SCREEN_INTENT` | Showing StandBy over the lock screen from the background |
+| `RECEIVE_BOOT_COMPLETED` | Restarting the watcher after a reboot (only if enabled) |
+
+Everything else needs no permission:
 
 | Need | API used | Permission |
 |---|---|---|
@@ -173,7 +235,6 @@ StandBy Clock **requests no permissions**.
 | Keep screen on | `FLAG_KEEP_SCREEN_ON` while active | none (no `WAKE_LOCK`) |
 | Brightness | `WindowManager.LayoutParams.screenBrightness` | none (no `WRITE_SETTINGS`) |
 | Next alarm | `AlarmManager.getNextAlarmClock()` + `ACTION_NEXT_ALARM_CLOCK_CHANGED` | none |
-| Notifications | not used | no `POST_NOTIFICATIONS` |
 
 The merged manifest contains `BIND_DREAM_SERVICE` / `BIND_QUICK_SETTINGS_TILE` (they restrict *who may
 bind* our services to the system) and AndroidX's signature-level
@@ -182,7 +243,9 @@ grant the app any capability.
 
 ## Battery efficiency
 
-* Nothing runs when StandBy is not on screen: no service, no alarm, no WorkManager, no polling.
+* Nothing runs when StandBy is not on screen: no alarm, no WorkManager, no polling, and no service
+  unless the opt-in lock-screen watcher is enabled. Even then it uses no wake lock and runs the
+  sensor only while the locked phone is awake.
 * All data sources are cold flows shared with `WhileSubscribed`; receivers and the sensor listener are
   unregistered within seconds after the screen turns off or StandBy closes.
 * The orientation sensor is used only when the activation mode requires landscape, at 5 Hz with
@@ -207,6 +270,8 @@ app/src/main/java/com/nitestand/standbyclock/
 ├── clock/                                ClockFormatter (java.time, locale aware), ClockTicker, ClockTheme
 ├── display/                              BrightnessPolicy, NightModeSchedule, BurnInShifter (all pure)
 ├── settings/                             StandBySettings, SettingsRepository (DataStore Preferences)
+├── lockscreen/                           LockScreenTrigger (pure), LockScreenWatcherService, StandByNotifications, BootReceiver
+├── diagnostics/                          DeviceDiagnostics, DiagnosticsReport (pure), EventLog
 ├── alarm/                                AlarmRepository
 ├── weather/                              WeatherProvider interface + LocalPlaceholderWeatherProvider
 ├── widgets/                              StandByWidget interface, WidgetHost, WidgetRegistry,
@@ -300,6 +365,8 @@ rate-limited network, pre-download it and pass `-Probolectric.dependency.dir=/pa
 Covered transitions include: not charging → charging, portrait → landscape, landscape → portrait,
 charging + portrait → charging + landscape, charging + landscape → unplugged, StandBy → exit, and
 exit → re-arm.
+
+Device test plan for OnePlus 12R / OxygenOS: see [ONEPLUS_TESTING.md](ONEPLUS_TESTING.md).
 
 Manual test checklist on a device:
 
