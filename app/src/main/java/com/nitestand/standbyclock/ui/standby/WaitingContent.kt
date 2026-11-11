@@ -37,7 +37,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nitestand.standbyclock.R
 import com.nitestand.standbyclock.clock.ClockTheme
-import com.nitestand.standbyclock.standby.ActivationMode
 import com.nitestand.standbyclock.standby.StandByState
 import com.nitestand.standbyclock.standby.StandByUiState
 import com.nitestand.standbyclock.ui.theme.StandByStyle
@@ -60,13 +59,13 @@ fun WaitingContent(
     val settings = state.settings
     val (title, body) = when {
         !activation.enabled -> R.string.waiting_disabled_title to R.string.waiting_disabled_body
-        activation.mode == ActivationMode.MANUAL -> R.string.waiting_manual_title to R.string.waiting_manual_body
+        !activation.mode.isAutomatic -> R.string.waiting_manual_title to R.string.waiting_manual_body
         activation.state == StandByState.READY -> R.string.waiting_ready_title to R.string.waiting_ready_body
         !activation.powerRequirementMet -> R.string.waiting_power_title to R.string.waiting_power_body
         activation.state == StandByState.CHARGING -> R.string.waiting_checking_title to R.string.waiting_checking_body
         else -> R.string.waiting_landscape_title to R.string.waiting_landscape_body
     }
-    val canStart = activation.state == StandByState.READY || activation.mode == ActivationMode.MANUAL
+    val canStart = activation.state == StandByState.READY || !activation.mode.isAutomatic
     val dimStyle = StandByStyle.create(settings.accent, ClockTheme.MINIMAL, night = state.nightActive, reduceMotion = true)
 
     val clock: @Composable (Modifier) -> Unit = { modifier ->

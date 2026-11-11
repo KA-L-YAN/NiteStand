@@ -10,6 +10,10 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+
+/** One classified sample with the raw angles, for the diagnostics screen. */
+data class OrientationReading(val orientation: DeviceOrientation, val rollDeg: Float, val elevationDeg: Float, val sensorName: String)
 
 /** Source of physical orientation. Abstracted so the controller can be tested with fakes. */
 fun interface OrientationSource {
@@ -29,12 +33,16 @@ class OrientationRepository(context: Context) : OrientationSource {
         get() = sensorManager?.getDefaultSensor(Sensor.TYPE_GRAVITY) != null ||
             sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null
 
-    override fun observe(config: OrientationConfig): Flow<DeviceOrientation> = callbackFlow {
+    override fun observe(config: OrientationConfig): Flow<DeviceOrientation> =
+        readings(config).map { it.orientation }.distinctUntilChanged()
+
+    /** Like [observe] but with raw angles; used by diagnostics. */
+    fun readings(config: OrientationConfig): Flow<OrientationReading> = callbackFlow {
         val manager = sensorManager
         val sensor = manager?.getDefaultSensor(Sensor.TYPE_GRAVITY)
             ?: manager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         if (manager == null || sensor == null) {
-            trySend(DeviceOrientation.UNAVAILABLE)
+            trySend(OrientationReading(DeviceOrientation.UNAVAILABLE, 0f, 0f, "none"))
             awaitClose { }
             return@callbackFlow
         }
@@ -44,14 +52,16 @@ class OrientationRepository(context: Context) : OrientationSource {
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
                 val values = filter?.apply(event.values) ?: event.values
-                trySend(classifier.update(values[0], values[1], values[2], SystemClock.elapsedRealtime()))
+                val orientation = classifier.update(values[0], values[1], values[2], SystemClock.elapsedRealtime())
+                val (roll, elevation) = OrientationClassifier.angles(values[0], values[1], values[2])
+                trySend(OrientationReading(orientation, roll, elevation, sensor.name))
             }
 
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
         }
         manager.registerListener(listener, sensor, SAMPLING_PERIOD_US, MAX_REPORT_LATENCY_US)
         awaitClose { manager.unregisterListener(listener) }
-    }.distinctUntilChanged()
+    }
 
     /** Isolates gravity from raw accelerometer readings. */
     private class LowPassFilter(private val alpha: Float = 0.8f) {

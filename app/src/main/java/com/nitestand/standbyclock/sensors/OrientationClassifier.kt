@@ -85,9 +85,17 @@ class OrientationClassifier(private val config: OrientationConfig = OrientationC
         }
     }
 
-    private companion object {
-        const val EARTH_G = 9.80665f
-        const val MIN_G = EARTH_G * 0.6f
-        const val MAX_G = EARTH_G * 1.4f
+    companion object {
+        /** Roll (0° = upright portrait, ±90° = landscape) and elevation (0° = vertical, 90° = flat). */
+        fun angles(x: Float, y: Float, z: Float): Pair<Float, Float> {
+            val magnitude = sqrt(x * x + y * y + z * z).coerceAtLeast(0.0001f)
+            val roll = Math.toDegrees(atan2(x.toDouble(), y.toDouble())).toFloat()
+            val elevation = Math.toDegrees(asin((abs(z) / magnitude).coerceIn(0f, 1f).toDouble())).toFloat()
+            return roll to elevation
+        }
+
+        private const val EARTH_G = 9.80665f
+        private const val MIN_G = EARTH_G * 0.6f
+        private const val MAX_G = EARTH_G * 1.4f
     }
 }

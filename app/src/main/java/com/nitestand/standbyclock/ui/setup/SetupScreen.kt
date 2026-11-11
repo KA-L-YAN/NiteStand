@@ -68,6 +68,7 @@ fun SetupScreen(
     onPreview: () -> Unit,
     onOpenScreenSaverSettings: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenDiagnostics: () -> Unit = {},
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -109,6 +110,12 @@ fun SetupScreen(
                 }
                 item { StatusCard(settings, battery) }
                 item { StepsCard() }
+                item {
+                    InfoCard(
+                        title = stringResource(R.string.no_charger_title),
+                        body = stringResource(R.string.no_charger_body),
+                    )
+                }
                 item { ScreenSaverCard(onOpenScreenSaverSettings) }
                 item {
                     InfoCard(
@@ -121,6 +128,11 @@ fun SetupScreen(
                         title = stringResource(R.string.device_tips_title),
                         body = stringResource(DeviceTips.forManufacturer()),
                     )
+                }
+                item {
+                    TextButton(onClick = onOpenDiagnostics, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.diagnostics_title))
+                    }
                 }
                 item { Spacer(Modifier.height(24.dp)) }
             }

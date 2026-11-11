@@ -140,4 +140,34 @@ class ScreenshotTest {
     fun settings() = capture("settings") {
         SettingsScreen(StandBySettings(), hasOrientationSensor = true, onUpdate = {}, onBack = {}, onOpenScreenSaverSettings = {})
     }
+
+    @Test
+    @Config(qualifiers = "w400dp-h1400dp-port-xhdpi")
+    fun diagnostics() = capture("diagnostics") {
+        val snapshot = com.nitestand.standbyclock.diagnostics.DeviceDiagnostics.snapshot(context)
+        val sections = com.nitestand.standbyclock.diagnostics.DiagnosticsReport.sections(
+            snapshot,
+            BatterySnapshot(64, ChargingStatus.NOT_CHARGING, PowerSource.NONE),
+            com.nitestand.standbyclock.sensors.OrientationReading(DeviceOrientation.LANDSCAPE_LEFT, 88f, 12f, "Gravity sensor"),
+            null,
+            StandByState.WAITING_FOR_LANDSCAPE,
+            watcherRunning = true,
+            settings = StandBySettings(activationMode = ActivationMode.LANDSCAPE_ONLY, lockScreenWatcher = true),
+            versionName = "1.1.0",
+        )
+        com.nitestand.standbyclock.ui.diagnostics.DiagnosticsScreen(
+            sections,
+            listOf("22:41:03  Watcher: SCREEN_ON → screenOn=true locked=true", "22:41:04  Watcher: conditions met → launching StandBy"),
+            com.nitestand.standbyclock.ui.diagnostics.DiagnosticsActions({}, {}, {}, {}, {}, {}),
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "w400dp-h1600dp-port-xhdpi")
+    fun settingsActivation() = capture("settings_activation") {
+        SettingsScreen(
+            StandBySettings(activationMode = ActivationMode.LANDSCAPE_ONLY, lockScreenWatcher = true),
+            hasOrientationSensor = true, onUpdate = {}, onBack = {}, onOpenScreenSaverSettings = {},
+        )
+    }
 }

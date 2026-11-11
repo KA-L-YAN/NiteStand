@@ -40,6 +40,20 @@ fun ActivationMode.label(): String = stringResource(
         ActivationMode.CHARGING_ONLY -> R.string.mode_charging_only
         ActivationMode.LANDSCAPE_ONLY -> R.string.mode_landscape_only
         ActivationMode.MANUAL -> R.string.mode_manual
+        ActivationMode.SCREEN_SAVER -> R.string.mode_screen_saver
+        ActivationMode.QUICK_SETTINGS -> R.string.mode_quick_settings
+    },
+)
+
+@Composable
+fun ActivationMode.description(): String = stringResource(
+    when (this) {
+        ActivationMode.CHARGING_AND_LANDSCAPE -> R.string.mode_charging_landscape_desc
+        ActivationMode.CHARGING_ONLY -> R.string.mode_charging_only_desc
+        ActivationMode.LANDSCAPE_ONLY -> R.string.mode_landscape_only_desc
+        ActivationMode.MANUAL -> R.string.mode_manual_desc
+        ActivationMode.SCREEN_SAVER -> R.string.mode_screen_saver_desc
+        ActivationMode.QUICK_SETTINGS -> R.string.mode_quick_settings_desc
     },
 )
 

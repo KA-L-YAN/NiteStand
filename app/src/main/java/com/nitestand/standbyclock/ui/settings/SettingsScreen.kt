@@ -66,6 +66,7 @@ import com.nitestand.standbyclock.sensors.OrientationSensitivity
 import com.nitestand.standbyclock.settings.AccentColor
 import com.nitestand.standbyclock.settings.StandBySettings
 import com.nitestand.standbyclock.standby.ActivationMode
+import com.nitestand.standbyclock.ui.components.description
 import com.nitestand.standbyclock.ui.components.label
 import java.time.LocalDate
 import java.time.LocalTime
@@ -78,6 +79,8 @@ fun SettingsScreen(
     onUpdate: ((StandBySettings) -> StandBySettings) -> Unit,
     onBack: () -> Unit,
     onOpenScreenSaverSettings: () -> Unit,
+    onToggleWatcher: (Boolean) -> Unit = { enable -> onUpdate { it.copy(lockScreenWatcher = enable) } },
+    onOpenDiagnostics: () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
@@ -104,7 +107,7 @@ fun SettingsScreen(
                 Modifier.widthIn(max = 720.dp).fillMaxWidth(),
                 contentPadding = PaddingValues(bottom = 32.dp),
             ) {
-                settingsContent(settings, hasOrientationSensor, onUpdate, onOpenScreenSaverSettings)
+                settingsContent(settings, hasOrientationSensor, onUpdate, onOpenScreenSaverSettings, onToggleWatcher, onOpenDiagnostics)
             }
         }
     }
@@ -115,6 +118,8 @@ private fun LazyListScope.settingsContent(
     hasOrientationSensor: Boolean,
     update: ((StandBySettings) -> StandBySettings) -> Unit,
     onOpenScreenSaverSettings: () -> Unit,
+    onToggleWatcher: (Boolean) -> Unit,
+    onOpenDiagnostics: () -> Unit,
 ) {
     // ---------------------------------------------------------------- General
     item { SectionHeader(R.string.section_general) }
@@ -153,8 +158,34 @@ private fun LazyListScope.settingsContent(
             options = ActivationMode.entries,
             selected = s.activationMode,
             label = { it.label() },
+            description = { it.description() },
             enabled = s.standByEnabled,
         ) { v -> update { it.copy(activationMode = v) } }
+    }
+    item {
+        Text(
+            s.activationMode.description(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+    }
+    item {
+        SwitchRow(
+            R.string.pref_watcher,
+            if (s.activationMode.supportsLockScreenWatcher) R.string.pref_watcher_summary else R.string.pref_watcher_unavailable,
+            s.lockScreenWatcher && s.activationMode.supportsLockScreenWatcher,
+            enabled = s.standByEnabled && s.activationMode.supportsLockScreenWatcher,
+        ) { v -> onToggleWatcher(v) }
+    }
+    item {
+        ChoiceRow(
+            title = R.string.pref_battery_timeout,
+            options = StandBySettings.BATTERY_TIMEOUTS,
+            selected = s.batteryTimeoutMinutes,
+            label = { if (it == 0) stringResource(R.string.battery_timeout_never) else pluralStringResource(R.plurals.minutes_value, it, it) },
+            summary = R.string.pref_battery_timeout_summary,
+        ) { v -> update { it.copy(batteryTimeoutMinutes = v) } }
     }
     item {
         ChoiceRow(
@@ -253,6 +284,14 @@ private fun LazyListScope.settingsContent(
     }
     item {
         ListItem(
+            headlineContent = { Text(stringResource(R.string.diagnostics_title)) },
+            supportingContent = { Text(stringResource(R.string.pref_diagnostics_summary)) },
+            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+            modifier = Modifier.selectable(selected = false, role = Role.Button, onClick = onOpenDiagnostics),
+        )
+    }
+    item {
+        ListItem(
             headlineContent = { Text(stringResource(R.string.about_version)) },
             supportingContent = { Text(BuildConfig.VERSION_NAME) },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
@@ -299,6 +338,7 @@ private fun <T> ChoiceRow(
     label: @Composable (T) -> String,
     enabled: Boolean = true,
     summary: Int? = null,
+    description: (@Composable (T) -> String)? = null,
     onSelect: (T) -> Unit,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
@@ -334,7 +374,16 @@ private fun <T> ChoiceRow(
                         ) {
                             RadioButton(selected = option == selected, onClick = null)
                             Spacer(Modifier.size(16.dp))
-                            Text(label(option), style = MaterialTheme.typography.bodyLarge)
+                            Column(Modifier.padding(vertical = 6.dp)) {
+                                Text(label(option), style = MaterialTheme.typography.bodyLarge)
+                                description?.let {
+                                    Text(
+                                        it(option),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
                         }
                     }
                 }

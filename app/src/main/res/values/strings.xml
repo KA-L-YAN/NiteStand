@@ -3,8 +3,11 @@
     <string name="app_name">StandBy Clock</string>
     <string name="standby_activity_label">StandBy</string>
     <string name="dream_label">StandBy Clock</string>
-    <string name="tile_label">StandBy</string>
-    <string name="tile_subtitle">Bedside clock</string>
+    <string name="tile_label">NiteStand</string>
+    <string name="tile_subtitle">Tap for StandBy</string>
+    <string name="tile_subtitle_on">On · tap to close</string>
+    <string name="tile_description">Start StandBy clock</string>
+    <string name="tile_description_on">StandBy clock is on. Tap to close.</string>
     <string name="shortcut_start_short">StandBy</string>
     <string name="shortcut_start_long">Start StandBy</string>
 
@@ -34,7 +37,7 @@
     <string name="lockscreen_body">StandBy can be shown on top of the lock screen but never unlocks your phone or replaces your secure lock screen. Notifications and apps stay protected. Exiting StandBy while locked returns you to your normal lock screen.</string>
     <string name="device_tips_title">Tips for your phone</string>
     <string name="tip_samsung">Samsung: the screen saver is under Settings › Display › Screen saver (some One UI versions hide it; search Settings for “Screen saver”). Disable “Put app to sleep” for StandBy Clock in Battery settings if StandBy closes unexpectedly.</string>
-    <string name="tip_oneplus">OnePlus: Settings › Display may not list a screen saver on every OxygenOS build. Use Start StandBy, then lock the phone. Allow StandBy Clock under Battery › Battery optimisation if it is closed in the background.</string>
+    <string name="tip_oneplus">OnePlus: if Settings › Display (or Settings search: “screen saver”) offers a screen saver, choose StandBy Clock with “While charging”. Without a charger, use the NiteStand Quick Settings tile, or turn on “Lock-screen auto start” and set App info › Battery usage to “Unrestricted” so OxygenOS does not stop it. Open Diagnostics to see what your phone allows.</string>
     <string name="tip_xiaomi">Xiaomi / Redmi / POCO: HyperOS and MIUI usually remove the system screen saver. Use Start StandBy, then lock the phone. Set Battery saver to “No restrictions” for StandBy Clock and enable “Show on Lock screen” in the app\'s Other permissions.</string>
     <string name="tip_oppo">OPPO / realme: ColorOS may hide the screen saver. Use Start StandBy, then lock. Allow “Show on lock screen” / floating windows for StandBy Clock if the lock screen hides it.</string>
     <string name="tip_vivo">vivo / iQOO: Funtouch / OriginOS may hide the screen saver. Use Start StandBy, then lock. Allow “Lock screen display” for StandBy Clock in app permissions if needed.</string>
@@ -98,8 +101,8 @@
     <string name="section_screensaver">Screen saver</string>
     <string name="pref_enable">Enable StandBy</string>
     <string name="pref_enable_summary">Allow StandBy to activate in the app and as screen saver</string>
-    <string name="pref_auto_start">Start automatically while charging</string>
-    <string name="pref_auto_start_summary">When StandBy is open, show the clock as soon as the conditions are met</string>
+    <string name="pref_auto_start">Start automatically</string>
+    <string name="pref_auto_start_summary">When StandBy is open, show the clock as soon as the activation conditions are met (charger and/or landscape)</string>
     <string name="pref_require_charging">Require charging</string>
     <string name="pref_require_charging_summary">Only activate while connected to power</string>
     <string name="pref_require_landscape">Require landscape orientation</string>
@@ -133,6 +136,43 @@
     <string name="pref_burn_in_interval">Movement interval</string>
     <string name="pref_screensaver_summary">Choose StandBy Clock as the screen saver for automatic StandBy while charging</string>
     <string name="about_version">Version</string>
+    <string name="pref_watcher">Lock-screen auto start (experimental)</string>
+    <string name="pref_watcher_summary">When you wake the locked phone and it is in the position this mode needs, StandBy opens over the lock screen — no charger needed in “Landscape only”. Runs a small background service with a silent notification; the motion sensor is used only while the lock screen is on. Needs notifications and full-screen notifications allowed.</string>
+    <string name="pref_watcher_unavailable">Available with Charging + landscape, Charging only or Landscape only</string>
+    <string name="pref_battery_timeout">On battery, keep screen on</string>
+    <string name="pref_battery_timeout_summary">Without a charger, StandBy lets the screen turn off after this time to save battery. Wake the phone to see it again.</string>
+    <string name="battery_timeout_never">Until I exit</string>
+    <plurals name="minutes_value">
+        <item quantity="one">For %1$d minute</item>
+        <item quantity="other">For %1$d minutes</item>
+    </plurals>
+    <string name="pref_diagnostics_summary">What this phone allows: screen saver, lock screen, permissions, sensors</string>
+    <string name="no_charger_title">Without a charger</string>
+    <string name="no_charger_body">Android only starts screen savers while charging or docked, and apps cannot open themselves from the background. Without a charger, start StandBy with one tap from the NiteStand tile in Quick Settings (also works on the lock screen), or turn on “Lock-screen auto start” in Settings so StandBy opens when you wake the locked phone while it is horizontal.</string>
+
+    <!-- Diagnostics -->
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_intro">Live facts that decide what StandBy can do on this phone. Values Android does not expose to apps are shown as “Unknown” instead of guessed. Use Copy report when reporting a problem.</string>
+    <string name="diagnostics_copy">Copy report</string>
+    <string name="diagnostics_copied">Diagnostics copied</string>
+    <string name="diagnostics_open_battery">Battery settings</string>
+    <string name="diagnostics_open_notifications">Notification settings</string>
+    <string name="diagnostics_open_fsi">Full-screen notifications</string>
+    <string name="diagnostics_events">Recent events</string>
+    <string name="diagnostics_no_events">No events yet</string>
+
+    <!-- Lock-screen watcher -->
+    <string name="channel_watcher">Lock-screen auto start</string>
+    <string name="channel_watcher_description">Required while lock-screen auto start is on. You can hide this channel.</string>
+    <string name="channel_launch">StandBy launch</string>
+    <string name="channel_launch_description">Used to open StandBy over the lock screen.</string>
+    <string name="watcher_notification_title">Lock-screen StandBy is ready</string>
+    <string name="watcher_notification_text">Wake your phone while it is horizontal to see StandBy</string>
+    <string name="launch_notification_title">StandBy</string>
+    <string name="launch_notification_text">Tap to show the StandBy clock</string>
+    <string name="fsi_dialog_title">Allow full-screen notifications</string>
+    <string name="fsi_dialog_body">To open StandBy over the lock screen by itself, Android needs “Full-screen notifications” (Android 14+) allowed for StandBy Clock. Without it you will only get a notification to tap.</string>
+    <string name="fsi_dialog_open">Open settings</string>
     <plurals name="seconds_value">
         <item quantity="one">Every %1$d second</item>
         <item quantity="other">Every %1$d seconds</item>
@@ -150,6 +190,14 @@
     <string name="mode_charging_only">Charging only</string>
     <string name="mode_landscape_only">Landscape only</string>
     <string name="mode_manual">Manual</string>
+    <string name="mode_screen_saver">Screen saver</string>
+    <string name="mode_quick_settings">Quick Settings tile</string>
+    <string name="mode_charging_landscape_desc">Starts by itself when the phone is charging and horizontal.</string>
+    <string name="mode_charging_only_desc">Starts by itself whenever the phone is charging, in any position.</string>
+    <string name="mode_landscape_only_desc">No charger needed: starts by itself when the phone is horizontal. Automatic start on the lock screen needs “Lock-screen auto start”.</string>
+    <string name="mode_manual_desc">Starts only when you tap Start StandBy in the app.</string>
+    <string name="mode_screen_saver_desc">Starts only when Android starts its screen saver (normally only while charging or docked). Shown in landscape.</string>
+    <string name="mode_quick_settings_desc">No charger needed: starts from the NiteStand tile in Quick Settings and stays until you exit.</string>
     <string name="sensitivity_strict">Strict</string>
     <string name="sensitivity_normal">Normal</string>
     <string name="sensitivity_relaxed">Relaxed</string>
