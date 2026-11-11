@@ -23,7 +23,7 @@ Phase: v1.0.0 complete
 - Brightness (per-window), Night mode (on / off / scheduled), burn-in pixel shift
 - Setup screen and Material 3 settings, persisted with DataStore
 - Accessibility: TalkBack labels, custom actions, reduced motion
-- 70 JVM unit tests, Compose/activity instrumentation tests (compiled)
+- 81 JVM tests (70 unit + 11 Robolectric screenshot renders, reviewed visually), Compose/activity instrumentation tests (compiled)
 - README, GitHub Actions CI
 
 ## Known issues / limitations
@@ -36,12 +36,15 @@ Phase: v1.0.0 complete
 ## Build
 - Debug APK: SUCCESS
 - Release APK (R8, signed v2): SUCCESS
-- Unit tests: PASSING (70/70)
+- Unit + screenshot tests: PASSING (81/81)
 - Lint: no errors, no warnings
 - Android tests: compile SUCCESS, not run
 
 ## Environment notes
 - Android SDK is downloaded from dl.google.com (cloud environment "NiteStand" allows it).
 - Maven Central sometimes returns HTTP 429; simply re-run the Gradle command.
+- Robolectric's android-all jar (SDK 35) is rate limited per IP on Maven Central; download it from
+  https://maven-central.storage-download.googleapis.com/maven2/org/robolectric/android-all-instrumented/15-robolectric-13954326-i7/
+  and run tests with -Probolectric.dependency.dir=<dir>.
 
 Last verified commit: see `git log -1` on branch ccr-6cf7a3e0-k2qpji

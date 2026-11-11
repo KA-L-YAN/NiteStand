@@ -80,6 +80,16 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric screenshot tests render real resources.
+        unitTests.isIncludeAndroidResources = true
+        // Optional: -Probolectric.dependency.dir=/path makes Robolectric use pre-downloaded
+        // android-all jars instead of fetching them at test time (useful behind rate limits).
+        unitTests.all { test ->
+            (project.findProperty("robolectric.dependency.dir") as String?)?.let { dir ->
+                test.systemProperty("robolectric.offline", "true")
+                test.systemProperty("robolectric.dependency.dir", dir)
+            }
+        }
     }
 
     packaging {
@@ -110,6 +120,10 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.test.ext.junit)

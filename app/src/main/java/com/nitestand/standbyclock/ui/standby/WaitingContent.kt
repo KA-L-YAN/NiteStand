@@ -2,6 +2,11 @@ package com.nitestand.standbyclock.ui.standby
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -64,15 +69,8 @@ fun WaitingContent(
     val canStart = activation.state == StandByState.READY || activation.mode == ActivationMode.MANUAL
     val dimStyle = StandByStyle.create(settings.accent, ClockTheme.MINIMAL, night = state.nightActive, reduceMotion = true)
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(Modifier.fillMaxWidth().height(110.dp)) {
+    val clock: @Composable (Modifier) -> Unit = { modifier ->
+        Box(modifier) {
             WidgetHost(
                 WidgetRegistry.clock,
                 sources,
@@ -81,45 +79,75 @@ fun WaitingContent(
                 Modifier.fillMaxSize(),
             )
         }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            stringResource(title),
-            style = MaterialTheme.typography.headlineSmall,
-            color = Color(0xFFE0DEE4),
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            stringResource(body),
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color(0xFFA5A2AB),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.widthIn(max = 460.dp),
-        )
-        if (activation.enabled && activation.mode.isAutomatic) {
-            Spacer(Modifier.height(20.dp))
-            Column(Modifier.widthIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (activation.mode.requiresCharging) {
-                    ConditionRow(R.string.condition_power, activation.powerRequirementMet)
+    }
+    val details: @Composable (Alignment.Horizontal) -> Unit = { alignment ->
+        Column(horizontalAlignment = alignment) {
+            Text(
+                stringResource(title),
+                style = MaterialTheme.typography.headlineSmall,
+                color = Color(0xFFE0DEE4),
+                textAlign = if (alignment == Alignment.Start) TextAlign.Start else TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(body),
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color(0xFFA5A2AB),
+                textAlign = if (alignment == Alignment.Start) TextAlign.Start else TextAlign.Center,
+                modifier = Modifier.widthIn(max = 460.dp),
+            )
+            if (activation.enabled && activation.mode.isAutomatic) {
+                Spacer(Modifier.height(16.dp))
+                Column(Modifier.widthIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    if (activation.mode.requiresCharging) {
+                        ConditionRow(R.string.condition_power, activation.powerRequirementMet)
+                    }
+                    if (activation.mode.requiresLandscape) {
+                        ConditionRow(R.string.condition_landscape, activation.orientationRequirementMet)
+                    }
                 }
-                if (activation.mode.requiresLandscape) {
-                    ConditionRow(R.string.condition_landscape, activation.orientationRequirementMet)
+            }
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (canStart) {
+                    Button(onClick = { onStart(false) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.action_start_standby))
+                    }
+                } else {
+                    OutlinedButton(onClick = { onStart(true) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(stringResource(R.string.action_start_anyway))
+                    }
+                }
+                TextButton(onClick = onClose, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.action_close))
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (canStart) {
-                Button(onClick = { onStart(false) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.action_start_standby))
-                }
-            } else {
-                OutlinedButton(onClick = { onStart(true) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(stringResource(R.string.action_start_anyway))
-                }
+    }
+
+    BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+        if (maxWidth > maxHeight && maxHeight < 520.dp) {
+            // Short landscape screen: clock on the left, status and actions on the right.
+            Row(
+                Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                clock(Modifier.weight(1f).height(140.dp))
+                Spacer(Modifier.width(32.dp))
+                Column(Modifier.weight(1.3f).verticalScroll(rememberScrollState())) { details(Alignment.Start) }
             }
-            TextButton(onClick = onClose, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(R.string.action_close))
+        } else {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                clock(Modifier.fillMaxWidth().height(110.dp))
+                Spacer(Modifier.height(16.dp))
+                details(Alignment.CenterHorizontally)
             }
         }
     }

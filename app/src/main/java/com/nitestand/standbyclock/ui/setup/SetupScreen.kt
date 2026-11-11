@@ -3,6 +3,7 @@
 package com.nitestand.standbyclock.ui.setup
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -139,6 +140,7 @@ private fun PreviewCard(settings: StandBySettings, sources: WidgetDataSources, o
             .aspectRatio(2.1f)
             .clip(RoundedCornerShape(28.dp))
             .background(Color.Black)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(28.dp))
             .clickable(onClickLabel = previewLabel, onClick = onPreview)
             .padding(horizontal = 20.dp, vertical = 14.dp),
     ) {

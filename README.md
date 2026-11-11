@@ -287,10 +287,15 @@ An APK signed with a different key cannot update an existing install — uninsta
 ## Test
 
 ```bash
-./gradlew testDebugUnitTest          # JVM unit tests (state machine, orientation, charging, clock, display, settings, controller)
+./gradlew testDebugUnitTest          # JVM unit tests + Robolectric screenshot tests
 ./gradlew lintDebug                  # Android Lint
 ./gradlew connectedDebugAndroidTest  # Compose UI + activity tests, needs a device or emulator
 ```
+
+`testDebugUnitTest` includes `ScreenshotTest`, which renders the real Compose screens (every clock
+design, night mode, waiting screen, setup, settings) with Robolectric native graphics and writes PNGs
+to `app/build/screenshots/`. Robolectric downloads its Android framework jar on first run; behind a
+rate-limited network, pre-download it and pass `-Probolectric.dependency.dir=/path/to/jars`.
 
 Covered transitions include: not charging → charging, portrait → landscape, landscape → portrait,
 charging + portrait → charging + landscape, charging + landscape → unplugged, StandBy → exit, and
