@@ -72,4 +72,4 @@ Phase: v1.2.0 — Apple StandBy-inspired clock gallery
   and pass -Probolectric.dependency.dir=<dir>.
 - Release signing key lives outside the repo (/root/.standby-signing in the build container only).
 
-Last verified commit: 1a9476e (branch ccr-6cf7a3e0-k2qpji)
+Last verified commit: a88d95e (branch ccr-6cf7a3e0-k2qpji)
