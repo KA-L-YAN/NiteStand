@@ -1,15 +1,26 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: v1.1.0 — OnePlus 12R / no-charger StandBy
+Phase: v1.2.0 — Apple StandBy-inspired clock gallery
 
 ## Current status
-- Overall: v1.1.0 implemented and verified in the build environment; awaiting real-device results.
-- Last completed task: no-charger StandBy (tile, opt-in lock-screen watcher, battery timeout),
-  new activation modes, diagnostics screen, ONEPLUS_TESTING.md.
+- Overall: v1.2.0 implemented and verified in the build environment (JVM + Robolectric screenshot
+  review of every face, day/night, 12/24h, seconds, portrait). Not yet seen on the physical device.
+- Last completed task: clock-face gallery (15 faces), palette colour system, central formatting
+  (AM/PM, date styles), smooth night transition, brightness ramp, settings migration v2.
 - Current task: none.
-- Next task: user runs ONEPLUS_TESTING.md on the OnePlus 12R and reports results + Diagnostics
-  "Copy report". Fix whatever OxygenOS behaviour the results reveal (especially test 12).
+- Next task: user runs ONEPLUS_TESTING.md test 13 on the OnePlus 12R (photos in a dark room) and
+  reports any face that needs size/brightness/spacing tuning on the real panel.
+
+## v1.2.0 clock-face work
+- Plan followed: domain (ClockTheme/ClockPalette/ClockFaceCatalog/WorldCities, settings + migration)
+  → shared renderer (TimeText, fonts) → faces → style/night → gallery → tests → visual review → docs.
+- Faces: StandBy (default), Color, Minimal, Rounded Bold, World, Analog, Analog Minimal, Analog Modern,
+  Analog Elegant, Bubble, Serif, Line, Calendar, Retro, Ambient.
+- Fonts (OFL 1.1, bundled): Nunito, Outfit, Playfair Display — licences in assets/licenses.
+- Settings migration v2: CLASSIC (old default) → DIGITAL_LARGE, side panel off, non-white v1 accent
+  carried over as the StandBy face colour. Other face choices kept. Old enum names still parse.
+- Activation, watcher, dream, tile, diagnostics untouched apart from the brightness ramp.
 
 ## Findings: what Android / OxygenOS allows without a charger
 - Screen saver (DreamService): the system starts it only while charging/docked; running on battery
@@ -48,8 +59,8 @@ Phase: v1.1.0 — OnePlus 12R / no-charger StandBy
 
 ## Build
 - Debug APK: SUCCESS
-- Release APK 1.1.0 (versionCode 2, R8, v2-signed, same certificate as 1.0.0): SUCCESS
-- Unit + screenshot tests: PASSING (99/99)
+- Release APK 1.2.0 (versionCode 3, R8, v2-signed, same certificate as 1.0.0/1.1.0): SUCCESS
+- Unit + screenshot tests: PASSING (123/123; screenshots in app/build/screenshots)
 - Lint: 0 errors, 0 warnings
 - Android tests: compile SUCCESS, not run
 

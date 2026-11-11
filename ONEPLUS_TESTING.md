@@ -247,3 +247,38 @@ StandBy is ready" stays present. Whether OxygenOS stopped the service after some
 * `adb shell appops get com.nitestand.standbyclock USE_FULL_SCREEN_INTENT`
 * `adb shell dumpsys activity services com.nitestand.standbyclock`
 * `adb logcat -s NiteStand:V ActivityTaskManager:I` (look for "Background activity launch blocked" or "Abort background activity starts").
+
+---
+
+## 13. Clock faces (v1.2.0)
+
+**Steps.** Settings › Clock faces. For each of the 15 faces:
+1. Tap it. It is marked selected, and the sheet opens.
+2. Change the colour.
+3. Tap **Preview full screen** with the phone horizontal on the stand.
+4. Swipe left or right on StandBy to step through the faces.
+
+Repeat a few faces with each of these:
+* 12-hour with AM/PM on and off
+* 24-hour
+* Show seconds on
+* Night mode (Settings › Night mode › Always on, or the sheet's *Preview night mode*)
+* Portrait (Preview while holding the phone upright)
+
+**Expected**
+* The time fills the screen on a true-black background. No status or navigation bar, no buttons.
+  The *Double-tap to exit* hint disappears after about 3 s.
+* The digits are vertically centred and nothing touches the camera cutout or the screen edges.
+* In 12-hour mode, AM/PM sits small at the top right of the minutes, with seconds under it.
+* Night mode fades to dim red over about 2.5 s, and brightness ramps down over about 1.5 s. There
+  are no white pixels in night mode.
+* After about 30–120 s (Settings › Burn-in protection) the whole clock has drifted a few pixels.
+  It drifts slowly and never jumps.
+* Exiting StandBy restores normal brightness and the system bars.
+
+**Record.** A photo of each face on the stand, in a dark room, at normal brightness and in night
+mode. Note any face that looks too bright, too small, off-centre, clipped by the cutout, or
+stutters when seconds are on.
+
+**If it fails, capture.** A screenshot (`adb exec-out screencap -p > face.png`), the face name and
+settings, and `adb shell dumpsys gfxinfo com.nitestand.standbyclock` for any stutter.

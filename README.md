@@ -23,16 +23,79 @@ Material 3). No network access, no accounts. The core app needs no permissions; 
 | No charger | NiteStand Quick Settings tile (one tap, also from the lock screen), opt-in lock-screen auto start, battery screen-on timeout |
 | Diagnostics | Live report of what the phone allows (screen saver, keyguard, permissions, sensor angles, StandBy state) with copyable event log |
 | Orientation | Physical orientation from the gravity sensor / accelerometer, both landscape directions, configurable tolerance, hysteresis and settle time |
-| Clock designs | Classic, Minimal, Retro (native seven-segment), Analog, Ambient — swipe to switch |
+| Clock faces | 15 Apple StandBy-inspired faces in a live-preview gallery (5 digital, 4 analog, 6 expressive) with per-face colours — swipe on StandBy to switch |
 | Widgets | Clock, Date, Battery (percentage + status), Next alarm, Weather (sample data) |
 | Display | Immersive full screen, sensor-landscape (auto 180° flip), keep-screen-on only while active |
-| Brightness | Auto / Low / Medium / High per-window override; Night mode (red, dimmest) on/off/scheduled |
+| Brightness | Auto / Low / Medium / High per-window override, ramped smoothly; Night mode (dim red, lowest brightness) Off / Always on / Automatic schedule, with a 2.5 s cross-fade |
 | Burn-in | Slow pixel shift (a few dp every 30–120 s) plus occasional re-anchoring |
 | Exit | Double-tap, back gesture, or TalkBack "Exit StandBy" action |
 | Extras | Screen saver (Dream), "NiteStand" Quick Settings tile, launcher shortcut |
 | Accessibility | TalkBack labels for clock and widgets, custom actions, 48 dp targets, reduced motion (app setting + system animator scale), high-contrast colours |
 
 ---
+
+## Clock faces
+
+Settings › **Clock faces** (or *Clock faces* on the start screen) opens a gallery of live
+previews. Tapping a face selects it straight away and opens a sheet to choose its colour, 12/24-hour
+time, seconds, AM/PM, date and date style, and (World) cities. The sheet also previews night mode and
+can show the face full screen. Every face shows the real system time and is drawn natively in Compose
+Canvas or with native text: there are no images, videos or prerecorded animations.
+
+![Clock faces, day](docs/images/clock-faces-day.jpg)
+
+| Category | Face | Character | Colours |
+|---|---|---|---|
+| Digital | **StandBy** (default) | Huge light rounded digits, nothing else | all 9 |
+| Digital | Color | Two-tone gradient digits | 7 colourful palettes |
+| Digital | Minimal | Thin geometric numerals, tiny tracked date | white, warm white, orange, blue |
+| Digital | Rounded Bold | Heavy rounded digits, accent date | all 9 |
+| Digital | World | Chosen city + optional second zone with offset | 5 |
+| Analog | Analog | Rounded numerals 1–12, watch-style hands | 6 (accent) |
+| Analog | Analog Minimal | Twelve hairline marks, thin hands | white, warm white |
+| Analog | Analog Modern | Dots and bars, bold skeleton hands | 7 (accent) |
+| Analog | Analog Elegant | Serif Roman numerals, tapered hands | 3 |
+| Expressive | Bubble | Heavy rounded numerals, per-digit colours | 7 |
+| Expressive | Serif | High-contrast display serif | 4 |
+| Expressive | Line | Hairline numerals over a line that fills each hour | 5 |
+| Expressive | Calendar | Weekday, big day number, month, time | 4 |
+| Expressive | Retro | Seven-segment LED | 5 LED colours |
+| Expressive | Ambient | Small and very dim | fixed |
+
+Night mode turns every face into StandBy-style dim red on black:
+
+![Night mode](docs/images/clock-faces-night.jpg)
+
+**How it is built** (`clock/`, `ui/clock/`):
+
+* `ClockFaceCatalog` declares, per face, its category, allowed `ClockPalette`s, and whether it
+  supports a date, seconds or AM/PM, the side panel or world time. Settings, the gallery and the
+  renderer read the same specification.
+* `ClockFormatter` decides 12/24-hour, seconds, AM/PM and date style once, centrally.
+  `ClockFaceData.build` applies the face's capabilities to it, so faces never format time themselves.
+* `TimeText` is the shared digital renderer. It draws with a native `Paint` on a Canvas and centres
+  the digits optically using their real glyph bounds rather than the line box. It raises the colon to
+  the middle of the digits, stacks AM/PM (aligned to the digit top) over seconds (aligned to the
+  baseline), and uses tabular lining figures, gradients and per-digit colour. Paints are reused
+  between frames.
+* `StandByStyle` derives colours from the palette and interpolates towards night red, which gives
+  the smooth night transition.
+* Adding a face takes three steps: an enum entry, a `ClockFaceSpec`, and a composable in the
+  `ClockFace` dispatcher.
+
+### Fonts and licences
+
+Apple's fonts and assets are **not** used or redistributed. The faces are original implementations
+*inspired by* StandBy, built with openly licensed fonts bundled in `res/font`:
+
+| Font | Used for | Licence |
+|---|---|---|
+| [Nunito](https://github.com/googlefonts/nunito) (variable 200–1000) | Rounded digits (StandBy, Color, Bold, World, Bubble, Calendar, Ambient, Analog numerals) | SIL Open Font License 1.1 |
+| [Outfit](https://github.com/Outfitio/Outfit-Fonts) (variable 100–900) | Thin geometric digits (Minimal, Line) | SIL Open Font License 1.1 |
+| [Playfair Display](https://github.com/clauseggers/Playfair-Display) (variable 400–900) | Serif and Analog Elegant | SIL Open Font License 1.1 |
+
+The licence texts ship in `assets/licenses` and are shown in Settings › Open-source fonts. The
+fonts came from the official Google Fonts repository.
 
 ## How StandBy activation works
 
@@ -267,7 +330,8 @@ app/src/main/java/com/nitestand/standbyclock/
 ├── sensors/                              DeviceOrientation, OrientationClassifier (pure), OrientationRepository
 ├── standby/                              StandByStateMachine (pure), StandByController, StandByViewModel,
 │                                         StandByActivity (Mode A), StandByDreamService (Mode B), StandByTileService
-├── clock/                                ClockFormatter (java.time, locale aware), ClockTicker, ClockTheme
+├── clock/                                ClockFormatter (central 12/24h, seconds, AM/PM, date styles), ClockTicker,
+│                                         ClockTheme (faces), ClockPalette (colours), ClockFaceCatalog, WorldCities
 ├── display/                              BrightnessPolicy, NightModeSchedule, BurnInShifter (all pure)
 ├── settings/                             StandBySettings, SettingsRepository (DataStore Preferences)
 ├── lockscreen/                           LockScreenTrigger (pure), LockScreenWatcherService, StandByNotifications, BootReceiver
@@ -276,7 +340,8 @@ app/src/main/java/com/nitestand/standbyclock/
 ├── weather/                              WeatherProvider interface + LocalPlaceholderWeatherProvider
 ├── widgets/                              StandByWidget interface, WidgetHost, WidgetRegistry,
 │                                         ClockWidget, DateWidget, BatteryWidget, NextAlarmWidget, WeatherWidget
-├── ui/clock/                             Classic, Minimal, Retro (seven-segment Canvas), Analog, Ambient faces
+├── ui/clock/                             TimeText renderer + typography, digital/expressive faces, analog faces, Retro
+├── ui/gallery/                           Clock Faces gallery and customisation sheet
 ├── ui/standby/                           StandByScreen, WaitingContent, burn-in offset, panel typography
 ├── ui/setup/, ui/settings/               Setup screen and Material 3 settings screen
 └── util/                                 ComposeLifecycleHost (Compose inside a Dream), system intents, device tips
