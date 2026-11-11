@@ -224,10 +224,12 @@ class LockScreenWatcherService : Service() {
             // 2) Full-screen intent.
             if (readiness.notificationsAllowed) {
                 val posted = StandByNotifications.postFullScreenLaunch(context)
+                val built = StandByNotifications.buildFullScreenLaunch(context)
                 ActivationTrace.step(
                     if (posted) {
                         "Full-screen intent posted (channel importance ${StandByNotifications.launchChannelImportance(context)}, " +
-                            "full-screen access ${if (readiness.fullScreenAllowed) "granted" else "DENIED"})"
+                            "full-screen access ${if (readiness.fullScreenAllowed) "granted" else "DENIED"}, " +
+                            "group ${built.group ?: "none"}, alerts ${if (StandByNotifications.groupSuppressesAlerts(built)) "SUPPRESSED" else "allowed"})"
                     } else {
                         "Full-screen intent could not be posted"
                     },

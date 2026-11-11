@@ -1,7 +1,17 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: v2.2.0 — automatic launch: device-verified root cause
+Phase: v2.2.1 — automatic launch: real root cause fixed
+
+## v2.2.1 — actual root cause (second OnePlus 12R trace)
+- 2.2.0 trace: screen OFF, keyguard locked, landscape, full-screen access granted, channel HIGH —
+  yet no launch. Cause (verified in androidx.core 1.19.1 bytecode): the launch notification used
+  NotificationCompat.Builder.setSilent(true), which puts it in group "silent" with
+  GROUP_ALERT_SUMMARY; SystemUI never launches a full-screen intent whose alerts are suppressed by
+  its group (NO_FSI_SUPPRESSIVE_GROUP_ALERT_BEHAVIOR) and shows a plain notification instead.
+  Introduced in 2.1.0. Fix: removed setSilent (channel is already silent); regression test
+  LaunchNotificationTest; the trace now logs the notification's group/alert state.
+- Device confirmation of the fixed build: pending.
 
 ## v2.2.0 — findings from the first real OnePlus 12R trace (OxygenOS 16.0.5.1301, Android 16)
 - With every prerequisite granted ("Verdict: Ready"), a full-screen intent posted while the AWAKE
@@ -102,7 +112,7 @@ Phase: v2.2.0 — automatic launch: device-verified root cause
 
 ## Build
 - Debug APK: SUCCESS
-- Release APK 2.2.0 (versionCode 6, R8, v2-signed, same certificate as earlier versions): SUCCESS
+- Release APK 2.2.1 (versionCode 7, R8, v2-signed, same certificate as earlier versions): SUCCESS
 - Unit + screenshot tests: PASSING (see last report; screenshots in app/build/screenshots)
 - Lint: 0 errors, 0 warnings
 - Android tests: compile SUCCESS, not run

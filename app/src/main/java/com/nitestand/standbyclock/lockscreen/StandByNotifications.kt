@@ -133,20 +133,7 @@ object StandByNotifications {
      */
     fun postFullScreenLaunch(context: Context): Boolean {
         if (!canPostNotifications(context)) return false
-        val pending = launchPendingIntent(context)
-        val notification = NotificationCompat.Builder(context, CHANNEL_LAUNCH)
-            .setSmallIcon(R.drawable.ic_tile_standby)
-            .setContentTitle(context.getString(R.string.launch_notification_title))
-            .setContentText(context.getString(R.string.launch_notification_text))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setFullScreenIntent(pending, true)
-            .setContentIntent(pending)
-            .setSilent(true)
-            .setAutoCancel(true)
-            .setTimeoutAfter(15_000)
-            .build()
+        val notification = buildFullScreenLaunch(context)
         return try {
             NotificationManagerCompat.from(context).notify(LAUNCH_NOTIFICATION_ID, notification)
             true
@@ -155,6 +142,38 @@ object StandByNotifications {
             false
         }
     }
+
+    /**
+     * The full-screen launch notification.
+     *
+     * IMPORTANT: it must not be silenced with `NotificationCompat.Builder.setSilent(true)`. AndroidX
+     * implements that by putting the notification in a group "silent" with GROUP_ALERT_SUMMARY, and
+     * SystemUI never launches a full-screen intent for a notification whose alerts are suppressed by
+     * its group (FullScreenIntentDecision NO_FSI_SUPPRESSIVE_GROUP_ALERT_BEHAVIOR) — it shows a
+     * plain notification instead. That was the cause of the failed launches in 2.1.0/2.2.0 on a
+     * OnePlus 12R. Silence comes from the channel (no sound, no vibration) instead.
+     */
+    internal fun buildFullScreenLaunch(context: Context): android.app.Notification {
+        val pending = launchPendingIntent(context)
+        return NotificationCompat.Builder(context, CHANNEL_LAUNCH)
+            .setSmallIcon(R.drawable.ic_tile_standby)
+            .setContentTitle(context.getString(R.string.launch_notification_title))
+            .setContentText(context.getString(R.string.launch_notification_text))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setFullScreenIntent(pending, true)
+            .setContentIntent(pending)
+            .setOnlyAlertOnce(false)
+            .setAutoCancel(true)
+            .setTimeoutAfter(15_000)
+            .build()
+    }
+
+    /** True when SystemUI would refuse the full-screen intent because of group alert suppression. */
+    fun groupSuppressesAlerts(n: android.app.Notification): Boolean =
+        n.group != null && !(n.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0) &&
+            n.groupAlertBehavior == android.app.Notification.GROUP_ALERT_SUMMARY
 
     /**
      * Replaces the launch notification with a quiet explanation when StandBy could not be opened
