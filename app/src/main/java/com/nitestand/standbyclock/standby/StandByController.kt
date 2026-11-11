@@ -28,6 +28,7 @@ data class StandByUiState(
     val activation: ActivationSnapshot,
     val settings: StandBySettings,
     val nightActive: Boolean,
+    val battery: BatterySnapshot? = null,
 )
 
 /**
@@ -41,13 +42,16 @@ data class StandByUiState(
 @OptIn(ExperimentalCoroutinesApi::class)
 class StandByController(
     private val settingsRepository: SettingsRepository,
-    battery: Flow<BatterySnapshot>,
+    private val battery: Flow<BatterySnapshot>,
     private val orientationSource: OrientationSource,
     minuteTicks: Flow<ZonedDateTime>,
     private val scope: CoroutineScope,
     forceActive: Boolean = false,
-    /** The dream ignores the "start automatically" toggle: the user already chose to show it. */
-    private val alwaysAutoStart: Boolean = false,
+    /**
+     * True inside the system screen saver: the "start automatically" toggle is ignored (the user
+     * already chose to show it) and the activation mode is mapped with [ActivationMode.dreamMode].
+     */
+    private val dream: Boolean = false,
 ) {
     private val machine = StandByStateMachine()
     private val commands = MutableSharedFlow<StandByEvent>(extraBufferCapacity = 16)
@@ -60,14 +64,20 @@ class StandByController(
         .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
 
     private val orientation: Flow<DeviceOrientation> = settings
-        .map { (it.standByEnabled && it.requireLandscape) to it.orientationSensitivity }
+        .map { (it.standByEnabled && (if (dream) it.activationMode.dreamMode else it.activationMode).requiresLandscape) to it.orientationSensitivity }
         .distinctUntilChanged()
         .flatMapLatest { (needed, sensitivity) ->
             if (needed) orientationSource.observe(sensitivity.config) else flowOf(DeviceOrientation.UNKNOWN)
         }
 
     private val activation: Flow<ActivationSnapshot> = merge(
-        settings.map { StandByEvent.SettingsChanged(it.standByEnabled, it.activationMode, it.autoStart || alwaysAutoStart) },
+        settings.map {
+            if (dream) {
+                StandByEvent.SettingsChanged(it.standByEnabled, it.activationMode.dreamMode, autoStart = true)
+            } else {
+                StandByEvent.SettingsChanged(it.standByEnabled, it.activationMode, it.autoStart)
+            }
+        },
         battery.map { StandByEvent.ChargingChanged(it.status) },
         orientation.map { StandByEvent.OrientationChanged(it) },
         commands,
@@ -80,8 +90,8 @@ class StandByController(
         NightModeSchedule.isNight(s.nightMode, s.nightStartMinutes, s.nightEndMinutes, now.toLocalTime())
     }.distinctUntilChanged()
 
-    val uiState: StateFlow<StandByUiState?> = combine(activation, settings, nightActive) { a, s, n ->
-        StandByUiState(a, s, n)
+    val uiState: StateFlow<StandByUiState?> = combine(activation, settings, nightActive, battery) { a, s, n, b ->
+        StandByUiState(a, s, n, b)
     }.stateIn(scope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun requestStart(force: Boolean = false) {

@@ -21,14 +21,37 @@ enum class StandByState {
     ACTIVE,
 }
 
-/** How StandBy decides to activate. Persisted by name. */
-enum class ActivationMode(val requiresCharging: Boolean, val requiresLandscape: Boolean) {
-    CHARGING_AND_LANDSCAPE(requiresCharging = true, requiresLandscape = true),
-    CHARGING_ONLY(requiresCharging = true, requiresLandscape = false),
-    LANDSCAPE_ONLY(requiresCharging = false, requiresLandscape = true),
-    MANUAL(requiresCharging = false, requiresLandscape = false);
+/**
+ * How StandBy decides to activate. Persisted by name.
+ *
+ * Automatic modes evaluate power/orientation while a StandBy surface (or the optional lock-screen
+ * watcher) is running. Non-automatic modes only start on an explicit user action: a tap in the
+ * app, the Quick Settings tile, or the system screen saver.
+ */
+enum class ActivationMode(
+    val requiresCharging: Boolean,
+    val requiresLandscape: Boolean,
+    val isAutomatic: Boolean,
+) {
+    CHARGING_AND_LANDSCAPE(requiresCharging = true, requiresLandscape = true, isAutomatic = true),
+    CHARGING_ONLY(requiresCharging = true, requiresLandscape = false, isAutomatic = true),
+    LANDSCAPE_ONLY(requiresCharging = false, requiresLandscape = true, isAutomatic = true),
+    MANUAL(requiresCharging = false, requiresLandscape = false, isAutomatic = false),
 
-    val isAutomatic: Boolean get() = this != MANUAL
+    /** StandBy appears only when the system starts it as the screen saver (landscape required there). */
+    SCREEN_SAVER(requiresCharging = false, requiresLandscape = true, isAutomatic = false),
+
+    /** StandBy is started from the Quick Settings tile and stays until the user exits. */
+    QUICK_SETTINGS(requiresCharging = false, requiresLandscape = false, isAutomatic = false);
+
+    /** Modes in which the optional lock-screen watcher can start StandBy by itself. */
+    val supportsLockScreenWatcher: Boolean get() = isAutomatic
+
+    /**
+     * Effective mode inside the system screen saver. The system only starts a dream while charging
+     * or docked, so the dream only needs to decide whether landscape is required.
+     */
+    val dreamMode: ActivationMode get() = if (requiresLandscape) LANDSCAPE_ONLY else CHARGING_ONLY
 
     companion object {
         /** Maps the two independent "require …" toggles back to a mode. Both off means manual. */

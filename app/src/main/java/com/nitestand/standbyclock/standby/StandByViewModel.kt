@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 class StandByViewModel(container: AppContainer, forceActive: Boolean) : ViewModel() {
 
-    private val controller = createController(container, viewModelScope, forceActive, alwaysAutoStart = false)
+    private val controller = createController(container, viewModelScope, forceActive, dream = false)
 
     val uiState: StateFlow<StandByUiState?> = controller.uiState
 
@@ -28,7 +28,7 @@ class StandByViewModel(container: AppContainer, forceActive: Boolean) : ViewMode
             container: AppContainer,
             scope: CoroutineScope,
             forceActive: Boolean,
-            alwaysAutoStart: Boolean,
+            dream: Boolean,
         ) = StandByController(
             settingsRepository = container.settingsRepository,
             battery = container.batteryRepository.battery,
@@ -36,7 +36,7 @@ class StandByViewModel(container: AppContainer, forceActive: Boolean) : ViewMode
             minuteTicks = StandByController.minuteTicks(container.clockTicker),
             scope = scope,
             forceActive = forceActive,
-            alwaysAutoStart = alwaysAutoStart,
+            dream = dream,
         )
     }
 }

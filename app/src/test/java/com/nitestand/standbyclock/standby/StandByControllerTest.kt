@@ -37,8 +37,8 @@ class StandByControllerTest {
     private val settings = SettingsRepository(InMemoryDataStore())
     private val midnight = ZonedDateTime.of(2026, 1, 1, 23, 30, 0, 0, ZoneId.systemDefault())
 
-    private fun TestScope.controller(force: Boolean = false): StandByController {
-        val c = StandByController(settings, battery, orientationSource, flowOf(midnight), backgroundScope, forceActive = force)
+    private fun TestScope.controller(force: Boolean = false, dream: Boolean = false): StandByController {
+        val c = StandByController(settings, battery, orientationSource, flowOf(midnight), backgroundScope, forceActive = force, dream = dream)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { c.uiState.collect { } }
         return c
     }
@@ -122,5 +122,25 @@ class StandByControllerTest {
         c.cycleTheme(1)
         runCurrent()
         assertEquals(com.nitestand.standbyclock.clock.ClockTheme.MINIMAL, settings.current().clockTheme)
+    }
+
+    @Test
+    fun `screen saver mode shows in landscape inside the dream`() = runTest {
+        settings.update { it.copy(activationMode = ActivationMode.SCREEN_SAVER, autoStart = false) }
+        battery.value = battery.value.copy(status = ChargingStatus.CHARGING)
+        orientation.value = DeviceOrientation.LANDSCAPE_LEFT
+        val c = controller(dream = true)
+        runCurrent()
+        assertEquals(StandByState.ACTIVE, c.state())
+        orientation.value = DeviceOrientation.PORTRAIT
+        runCurrent()
+        assertEquals(StandByState.WAITING_FOR_LANDSCAPE, c.state())
+    }
+
+    @Test
+    fun `battery state is exposed for the battery timeout`() = runTest {
+        val c = controller()
+        runCurrent()
+        assertEquals(ChargingStatus.NOT_CHARGING, c.uiState.value!!.battery?.status)
     }
 }

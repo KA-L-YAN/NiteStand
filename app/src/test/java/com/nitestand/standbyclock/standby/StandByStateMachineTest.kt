@@ -181,4 +181,31 @@ class StandByStateMachineTest {
         assertEquals(ActivationMode.LANDSCAPE_ONLY, ActivationMode.from(false, true))
         assertEquals(ActivationMode.MANUAL, ActivationMode.from(false, false))
     }
+
+    @Test
+    fun `screen saver and quick settings modes start only on request, without a charger`() {
+        for (mode in listOf(ActivationMode.SCREEN_SAVER, ActivationMode.QUICK_SETTINGS)) {
+            val m = machine(mode = mode)
+            m.charging(ChargingStatus.NOT_CHARGING)
+            assertEquals(StandByState.IDLE, m.orientation(DeviceOrientation.LANDSCAPE_LEFT))
+            assertEquals(StandByState.ACTIVE, m.onEvent(StandByEvent.StartRequested(force = true)).state)
+            assertEquals(StandByState.IDLE, m.onEvent(StandByEvent.ExitRequested).state)
+        }
+    }
+
+    @Test
+    fun `landscape only activates on battery and deactivates in portrait`() {
+        val m = machine(mode = ActivationMode.LANDSCAPE_ONLY)
+        m.charging(ChargingStatus.NOT_CHARGING)
+        assertEquals(StandByState.ACTIVE, m.orientation(DeviceOrientation.LANDSCAPE_RIGHT))
+        assertEquals(StandByState.WAITING_FOR_LANDSCAPE, m.orientation(DeviceOrientation.PORTRAIT))
+    }
+
+    @Test
+    fun `dream mode mapping`() {
+        assertEquals(ActivationMode.LANDSCAPE_ONLY, ActivationMode.SCREEN_SAVER.dreamMode)
+        assertEquals(ActivationMode.LANDSCAPE_ONLY, ActivationMode.CHARGING_AND_LANDSCAPE.dreamMode)
+        assertEquals(ActivationMode.CHARGING_ONLY, ActivationMode.QUICK_SETTINGS.dreamMode)
+        assertEquals(ActivationMode.CHARGING_ONLY, ActivationMode.MANUAL.dreamMode)
+    }
 }
