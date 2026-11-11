@@ -47,4 +47,4 @@ Phase: v1.0.0 complete
   https://maven-central.storage-download.googleapis.com/maven2/org/robolectric/android-all-instrumented/15-robolectric-13954326-i7/
   and run tests with -Probolectric.dependency.dir=<dir>.
 
-Last verified commit: see `git log -1` on branch ccr-6cf7a3e0-k2qpji
+Last verified commit: cfc837d (branch ccr-6cf7a3e0-k2qpji)
