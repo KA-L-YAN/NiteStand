@@ -1,0 +1,42 @@
+name: Android CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests, lint and debug APK
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug assembleDebugAndroidTest
+
+      # Optional signed release: add repository secrets STANDBY_KEYSTORE_BASE64,
+      # STANDBY_KEYSTORE_PASSWORD, STANDBY_KEY_ALIAS and STANDBY_KEY_PASSWORD.
+      # Without them the release APK is signed with the CI debug key.
+      - name: Release APK
+        env:
+          STANDBY_KEYSTORE_BASE64: ${{ secrets.STANDBY_KEYSTORE_BASE64 }}
+          STANDBY_KEYSTORE_PASSWORD: ${{ secrets.STANDBY_KEYSTORE_PASSWORD }}
+          STANDBY_KEY_ALIAS: ${{ secrets.STANDBY_KEY_ALIAS }}
+          STANDBY_KEY_PASSWORD: ${{ secrets.STANDBY_KEY_PASSWORD }}
+        run: |
+          if [ -n "$STANDBY_KEYSTORE_BASE64" ]; then
+            echo "$STANDBY_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            export STANDBY_KEYSTORE_FILE="$RUNNER_TEMP/release.jks"
+          fi
+          ./gradlew --no-daemon assembleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: standby-clock-apks
+          path: app/build/outputs/apk/**/*.apk

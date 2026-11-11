@@ -1,25 +1,47 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: Testing & verification
+Phase: v1.0.0 complete
+
+## Current status
+- Overall: feature-complete v1.0.0; debug and signed release APKs build.
+- Last completed task: README, CI workflow, release build and verification.
+- Current task: none.
+- Next task (optional): run the instrumentation tests on a physical device or emulator
+  (`./gradlew connectedDebugAndroidTest`) and do the manual checklist in README.md.
 
 ## Completed
-- Android project (AGP 9.5.1, Gradle 9.8.2, Kotlin 2.4.20, compile/target SDK 37, min SDK 26)
-- Charging detection (sticky ACTION_BATTERY_CHANGED + POWER_CONNECTED/DISCONNECTED)
-- Orientation detection (gravity / accelerometer, threshold + hysteresis + settle time)
-- StandBy activation state machine
-- Clock formatting / ticker, 5 clock themes
-- Widgets (clock, date, battery, next alarm, weather placeholder)
-- StandBy activity (Mode A), DreamService (Mode B), Quick Settings tile
-- Setup + Material 3 settings screens, DataStore settings
-- Brightness, night mode, burn-in protection
+- Android project (AGP 9.5.1 built-in Kotlin, Gradle 9.8.2, Kotlin 2.4.21, compile/target SDK 37, min SDK 26)
+- Charging detection (sticky ACTION_BATTERY_CHANGED + POWER_CONNECTED/DISCONNECTED, no polling)
+- Orientation detection (gravity / accelerometer, tolerance + hysteresis + settle time, both landscape directions)
+- StandBy activation state machine (IDLE / CHARGING / WAITING_FOR_LANDSCAPE / READY / ACTIVE)
+- StandBy activity (Mode A): immersive, sensorLandscape, keep-screen-on only while active, show-when-locked
+- DreamService (Mode B) with Compose lifecycle host, 30 s idle grace
+- Quick Settings tile, dynamic launcher shortcut
+- 5 clock themes: Classic, Minimal, Retro (seven-segment Canvas), Analog, Ambient
+- Widgets: Clock, Date, Battery, Next alarm, Weather (offline placeholder)
+- Brightness (per-window), Night mode (on / off / scheduled), burn-in pixel shift
+- Setup screen and Material 3 settings, persisted with DataStore
+- Accessibility: TalkBack labels, custom actions, reduced motion
+- 70 JVM unit tests, Compose/activity instrumentation tests (compiled)
+- README, GitHub Actions CI
 
-## Currently working on
-- Unit tests + instrumentation tests
-
-## Next
-- README, release signing, CI workflow, release APK
+## Known issues / limitations
+- Instrumentation tests compiled but not executed (no emulator/KVM in the build container).
+- APK not installed on a real device from the build environment (no device available).
+- OEM screen-saver availability varies (see README).
+- The release APK produced in the build session was signed with a throwaway key kept outside the repo;
+  future releases need the maintainer's own key (see README "Release signing").
 
 ## Build
 - Debug APK: SUCCESS
-- Unit tests: not yet written
+- Release APK (R8, signed v2): SUCCESS
+- Unit tests: PASSING (70/70)
+- Lint: no errors, no warnings
+- Android tests: compile SUCCESS, not run
+
+## Environment notes
+- Android SDK is downloaded from dl.google.com (cloud environment "NiteStand" allows it).
+- Maven Central sometimes returns HTTP 429; simply re-run the Gradle command.
+
+Last verified commit: see `git log -1` on branch ccr-6cf7a3e0-k2qpji
