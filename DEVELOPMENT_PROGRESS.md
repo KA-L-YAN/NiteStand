@@ -115,4 +115,4 @@ Phase: v2.2.0 — automatic launch: device-verified root cause
   and pass -Probolectric.dependency.dir=<dir>.
 - Release signing key lives outside the repo (/root/.standby-signing in the build container only).
 
-Last verified commit: 9f8ce67 (branch ccr-6cf7a3e0-k2qpji)
+Last verified commit: 769ee4b (branch ccr-6cf7a3e0-k2qpji)
