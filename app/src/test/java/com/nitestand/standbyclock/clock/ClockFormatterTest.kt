@@ -75,8 +75,38 @@ class ClockFormatterTest {
 
     @Test
     fun `theme cycling wraps around`() {
-        assertEquals(ClockTheme.MINIMAL, ClockTheme.CLASSIC.cycle(1))
-        assertEquals(ClockTheme.AMBIENT, ClockTheme.CLASSIC.cycle(-1))
-        assertEquals(ClockTheme.CLASSIC, ClockTheme.AMBIENT.cycle(1))
+        assertEquals(ClockTheme.DIGITAL_COLOR, ClockTheme.DIGITAL_LARGE.cycle(1))
+        assertEquals(ClockTheme.AMBIENT, ClockTheme.DIGITAL_LARGE.cycle(-1))
+        assertEquals(ClockTheme.DIGITAL_LARGE, ClockTheme.AMBIENT.cycle(1))
+    }
+
+    @Test
+    fun `am pm can be hidden but is still spoken`() {
+        val text = ClockFormatter(Locale.US, use24Hour = false, showSeconds = false, showAmPm = false).format(evening)
+        assertNull(text.amPm)
+        assertEquals("5:53", text.hoursAndMinutes)
+        assertTrue(text.accessibilityLabel.startsWith("5:53 PM"))
+    }
+
+    @Test
+    fun `am pm never shown in 24 hour mode`() {
+        assertNull(ClockFormatter(Locale.US, use24Hour = true, showSeconds = false, showAmPm = true).format(evening).amPm)
+    }
+
+    @Test
+    fun `long and medium date styles`() {
+        val text = ClockFormatter(Locale.US, true, false).format(evening)
+        assertEquals("Monday, September 14", text.longDate)
+        assertEquals("14 Sep", text.mediumDate)
+        val custom = ClockFormatter(Locale.US, true, false, datePatterns = DatePatterns("EEEE, MMMM d", "MMM d")).format(evening)
+        assertEquals("Sep 14", custom.mediumDate)
+    }
+
+    @Test
+    fun `seconds formatting with 12 hour mode`() {
+        val text = ClockFormatter(Locale.US, use24Hour = false, showSeconds = true).format(evening)
+        assertEquals("5:53", text.hoursAndMinutes)
+        assertEquals("07", text.seconds)
+        assertEquals("PM", text.amPm)
     }
 }

@@ -8,7 +8,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.nitestand.standbyclock.clock.ClockPalette
 import com.nitestand.standbyclock.clock.ClockTheme
+import com.nitestand.standbyclock.clock.DateStyle
 import com.nitestand.standbyclock.clock.HourFormat
 import com.nitestand.standbyclock.display.BrightnessLevel
 import com.nitestand.standbyclock.display.NightMode
@@ -60,6 +62,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val HOUR_FORMAT = stringPreferencesKey("hour_format")
         val SHOW_SECONDS = booleanPreferencesKey("show_seconds")
         val SHOW_DATE = booleanPreferencesKey("show_date")
+        val SHOW_AM_PM = booleanPreferencesKey("show_am_pm")
+        val DATE_STYLE = stringPreferencesKey("date_style")
+        val WORLD_PRIMARY = stringPreferencesKey("world_primary_city")
+        val WORLD_SECONDARY = stringPreferencesKey("world_secondary_city")
+        val SCHEMA_VERSION = intPreferencesKey("schema_version")
+        const val CURRENT_SCHEMA = 2
+
+        fun faceColorKey(theme: ClockTheme) = stringPreferencesKey("face_color_${theme.name}")
         val SHOW_PANEL = booleanPreferencesKey("show_panel")
         val WIDGET_DATE = booleanPreferencesKey("widget_date")
         val WIDGET_BATTERY = booleanPreferencesKey("widget_battery")
@@ -91,6 +101,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 hourFormat = prefs.enumOf(HOUR_FORMAT, d.hourFormat),
                 showSeconds = prefs[SHOW_SECONDS] ?: d.showSeconds,
                 showDate = prefs[SHOW_DATE] ?: d.showDate,
+                showAmPm = prefs[SHOW_AM_PM] ?: d.showAmPm,
+                dateStyle = prefs.enumOf(DATE_STYLE, d.dateStyle),
+                faceColors = ClockTheme.entries.mapNotNull { theme ->
+                    prefs[faceColorKey(theme)]
+                        ?.let { name -> ClockPalette.entries.firstOrNull { it.name == name } }
+                        ?.let { theme to it }
+                }.toMap(),
+                worldPrimaryCity = prefs[WORLD_PRIMARY] ?: d.worldPrimaryCity,
+                worldSecondaryCity = prefs[WORLD_SECONDARY] ?: d.worldSecondaryCity,
                 showPanel = prefs[SHOW_PANEL] ?: d.showPanel,
                 showDateWidget = prefs[WIDGET_DATE] ?: d.showDateWidget,
                 showBatteryWidget = prefs[WIDGET_BATTERY] ?: d.showBatteryWidget,
@@ -119,6 +138,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             prefs[HOUR_FORMAT] = s.hourFormat.name
             prefs[SHOW_SECONDS] = s.showSeconds
             prefs[SHOW_DATE] = s.showDate
+            prefs[SHOW_AM_PM] = s.showAmPm
+            prefs[DATE_STYLE] = s.dateStyle.name
+            prefs[WORLD_PRIMARY] = s.worldPrimaryCity
+            prefs[WORLD_SECONDARY] = s.worldSecondaryCity
+            ClockTheme.entries.forEach { theme ->
+                val color = s.faceColors[theme]
+                if (color == null) prefs.remove(faceColorKey(theme)) else prefs[faceColorKey(theme)] = color.name
+            }
+            prefs[SCHEMA_VERSION] = CURRENT_SCHEMA
             prefs[SHOW_PANEL] = s.showPanel
             prefs[WIDGET_DATE] = s.showDateWidget
             prefs[WIDGET_BATTERY] = s.showBatteryWidget

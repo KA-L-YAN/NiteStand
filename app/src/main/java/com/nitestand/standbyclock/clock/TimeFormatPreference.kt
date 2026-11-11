@@ -15,6 +15,14 @@ class TimeFormatPreference(private val context: Context) {
 
     fun locale(): Locale = context.resources.configuration.locales[0] ?: Locale.getDefault()
 
-    fun formatter(format: HourFormat, showSeconds: Boolean): ClockFormatter =
-        ClockFormatter(locale(), is24Hour(format), showSeconds)
+    fun datePatterns(): DatePatterns {
+        val locale = locale()
+        return DatePatterns(
+            long = DateFormat.getBestDateTimePattern(locale, "EEEEMMMMd"),
+            medium = DateFormat.getBestDateTimePattern(locale, "dMMM"),
+        )
+    }
+
+    fun formatter(format: HourFormat, showSeconds: Boolean, showAmPm: Boolean = true): ClockFormatter =
+        ClockFormatter(locale(), is24Hour(format), showSeconds, showAmPm, datePatterns())
 }

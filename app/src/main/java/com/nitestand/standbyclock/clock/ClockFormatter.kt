@@ -19,6 +19,10 @@ data class ClockText(
     val amPm: String?,
     /** Compact date such as "MON 14". */
     val shortDate: String,
+    /** Long date such as "Tuesday, November 11" (locale-ordered on Android). */
+    val longDate: String,
+    /** Short date such as "11 Nov" / "Nov 11". */
+    val mediumDate: String,
     /** Spoken form for TalkBack, e.g. "5:53 PM, Monday, November 14". */
     val accessibilityLabel: String,
 ) {
@@ -30,10 +34,19 @@ data class ClockText(
  * Locale-aware formatting for the StandBy clock. Uses java.time (available from API 26) so
  * it can be unit tested on the JVM.
  */
+/** Date patterns; on Android these come from DateFormat.getBestDateTimePattern for the locale. */
+data class DatePatterns(val long: String = "EEEE, MMMM d", val medium: String = "d MMM")
+
+/**
+ * Central time formatting for every clock face: 12/24-hour, seconds, AM/PM visibility and the
+ * date styles are decided here once, never inside individual faces.
+ */
 class ClockFormatter(
     private val locale: Locale,
     private val use24Hour: Boolean,
     private val showSeconds: Boolean,
+    private val showAmPm: Boolean = true,
+    datePatterns: DatePatterns = DatePatterns(),
 ) {
     private val decimalStyle = DecimalStyle.of(locale)
     private fun pattern(p: String) = DateTimeFormatter.ofPattern(p, locale).withDecimalStyle(decimalStyle)
@@ -44,15 +57,19 @@ class ClockFormatter(
     private val amPmFormatter = pattern("a")
     private val shortDateFormatter = pattern("EEE d")
     private val spokenDateFormatter = pattern("EEEE, MMMM d")
+    private val longDateFormatter = pattern(datePatterns.long)
+    private val mediumDateFormatter = pattern(datePatterns.medium)
     private val separator = timeSeparator(locale)
 
     fun format(time: ZonedDateTime): ClockText {
         val hours = hourFormatter.format(time)
         val minutes = minuteFormatter.format(time)
-        val amPm = if (use24Hour) null else amPmFormatter.format(time)
+        val marker = if (use24Hour) null else amPmFormatter.format(time)
+        val amPm = marker?.takeIf { showAmPm }
         val spokenTime = buildString {
             append(hours).append(separator).append(minutes)
-            if (amPm != null) append(' ').append(amPm)
+            // TalkBack always hears AM/PM in 12-hour mode, even when it is hidden visually.
+            if (marker != null) append(' ').append(marker)
         }
         return ClockText(
             hours = hours,
@@ -61,6 +78,8 @@ class ClockFormatter(
             separator = separator,
             amPm = amPm,
             shortDate = shortDateFormatter.format(time).replace(".", "").uppercase(locale),
+            longDate = longDateFormatter.format(time),
+            mediumDate = mediumDateFormatter.format(time).replace(".", ""),
             accessibilityLabel = "$spokenTime, ${spokenDateFormatter.format(time)}",
         )
     }

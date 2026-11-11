@@ -8,6 +8,7 @@ import com.nitestand.standbyclock.charging.BatteryRepository
 import com.nitestand.standbyclock.clock.ClockTicker
 import com.nitestand.standbyclock.clock.TimeFormatPreference
 import com.nitestand.standbyclock.sensors.OrientationRepository
+import com.nitestand.standbyclock.settings.SettingsMigrationV2
 import com.nitestand.standbyclock.settings.SettingsRepository
 import com.nitestand.standbyclock.weather.LocalPlaceholderWeatherProvider
 import com.nitestand.standbyclock.weather.WeatherProvider
@@ -30,6 +31,7 @@ class AppContainer(context: Context) {
     val settingsRepository: SettingsRepository by lazy {
         SettingsRepository(
             PreferenceDataStoreFactory.create(
+                migrations = listOf(SettingsMigrationV2),
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
                 produceFile = { appContext.preferencesDataStoreFile("standby_settings") },
             ),

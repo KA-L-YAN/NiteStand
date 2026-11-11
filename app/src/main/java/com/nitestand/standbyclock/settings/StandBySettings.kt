@@ -1,13 +1,15 @@
 package com.nitestand.standbyclock.settings
 
+import com.nitestand.standbyclock.clock.ClockPalette
 import com.nitestand.standbyclock.clock.ClockTheme
+import com.nitestand.standbyclock.clock.DateStyle
 import com.nitestand.standbyclock.clock.HourFormat
 import com.nitestand.standbyclock.display.BrightnessLevel
 import com.nitestand.standbyclock.display.NightMode
 import com.nitestand.standbyclock.sensors.OrientationSensitivity
 import com.nitestand.standbyclock.standby.ActivationMode
 
-/** Accent colour family used by the clock faces. */
+/** v1 accent colour. Superseded by per-face [ClockPalette]s; kept so old settings still parse. */
 enum class AccentColor { WHITE, WARM, RED, BLUE, MINT }
 
 /** Every user preference. Defaults define the out-of-the-box experience. */
@@ -24,12 +26,21 @@ data class StandBySettings(
     /** On battery, keep the screen on this long before letting the system timeout apply; 0 = until exit. */
     val batteryTimeoutMinutes: Int = 30,
     // Clock
-    val clockTheme: ClockTheme = ClockTheme.CLASSIC,
+    val clockTheme: ClockTheme = ClockTheme.DEFAULT,
     val hourFormat: HourFormat = HourFormat.SYSTEM,
     val showSeconds: Boolean = false,
     val showDate: Boolean = true,
-    // Widgets
-    val showPanel: Boolean = true,
+    /** 12-hour mode only: show the AM/PM marker. */
+    val showAmPm: Boolean = true,
+    val dateStyle: DateStyle = DateStyle.LONG,
+    /** Colour chosen per clock face; faces without an entry use their default palette. */
+    val faceColors: Map<ClockTheme, ClockPalette> = emptyMap(),
+    /** World clock: primary city key ([com.nitestand.standbyclock.clock.WorldCities.LOCAL] = phone zone). */
+    val worldPrimaryCity: String = "",
+    /** World clock: secondary city key, or [com.nitestand.standbyclock.clock.WorldCities.NONE]. */
+    val worldSecondaryCity: String = "london",
+    // Widgets — off by default: the StandBy screen is just the clock.
+    val showPanel: Boolean = false,
     val showDateWidget: Boolean = true,
     val showBatteryWidget: Boolean = true,
     val showAlarmWidget: Boolean = true,

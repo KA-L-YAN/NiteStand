@@ -47,7 +47,12 @@ class SettingsRepositoryTest {
             hourFormat = HourFormat.TWENTY_FOUR_HOUR,
             showSeconds = true,
             showDate = false,
-            showPanel = false,
+            showAmPm = false,
+            dateStyle = com.nitestand.standbyclock.clock.DateStyle.SHORT,
+            faceColors = mapOf(ClockTheme.RETRO to com.nitestand.standbyclock.clock.ClockPalette.GREEN, ClockTheme.DIGITAL_LARGE to com.nitestand.standbyclock.clock.ClockPalette.PINK),
+            worldPrimaryCity = "tokyo",
+            worldSecondaryCity = "none",
+            showPanel = true,
             showDateWidget = false,
             showBatteryWidget = false,
             showAlarmWidget = false,
@@ -70,7 +75,7 @@ class SettingsRepositoryTest {
         val repo = SettingsRepository(InMemoryDataStore())
         repo.update { it.copy(clockTheme = it.clockTheme.cycle(1)) }
         repo.update { it.copy(clockTheme = it.clockTheme.cycle(1)) }
-        assertEquals(ClockTheme.RETRO, repo.current().clockTheme)
+        assertEquals(ClockTheme.MINIMAL, repo.current().clockTheme)
     }
 
     @Test
@@ -85,7 +90,23 @@ class SettingsRepositoryTest {
     @Test
     fun `unknown enum names fall back to defaults`() = runTest {
         val store = InMemoryDataStore(mutablePreferencesOf(stringPreferencesKey("clock_theme") to "HOLOGRAM"))
-        assertEquals(ClockTheme.CLASSIC, SettingsRepository(store).current().clockTheme)
+        assertEquals(ClockTheme.DIGITAL_LARGE, SettingsRepository(store).current().clockTheme)
+    }
+
+    @Test
+    fun `defaults are the StandBy face on a clock-only screen`() = runTest {
+        val s = SettingsRepository(InMemoryDataStore()).current()
+        assertEquals(ClockTheme.DIGITAL_LARGE, s.clockTheme)
+        assertFalse(s.showPanel)
+        assertEquals(emptyMap<ClockTheme, com.nitestand.standbyclock.clock.ClockPalette>(), s.faceColors)
+    }
+
+    @Test
+    fun `clearing a face colour removes it`() = runTest {
+        val repo = SettingsRepository(InMemoryDataStore())
+        repo.update { it.copy(faceColors = mapOf(ClockTheme.SERIF to com.nitestand.standbyclock.clock.ClockPalette.RED)) }
+        repo.update { it.copy(faceColors = emptyMap()) }
+        assertEquals(emptyMap<ClockTheme, com.nitestand.standbyclock.clock.ClockPalette>(), repo.current().faceColors)
     }
 
     @Test
