@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
 
     /** Long-press launcher shortcut "Start StandBy". */
     private fun publishLauncherShortcut() {
-        val shortcut = ShortcutInfoCompat.Builder(this, "start_standby")
+        val shortcut = ShortcutInfoCompat.Builder(this, StandByActivity.SHORTCUT_ID)
             .setShortLabel(getString(R.string.shortcut_start_short))
             .setLongLabel(getString(R.string.shortcut_start_long))
             .setIcon(IconCompat.createWithResource(this, R.drawable.ic_shortcut_standby))

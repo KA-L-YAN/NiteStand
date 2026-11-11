@@ -11,6 +11,7 @@ import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
+import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -51,6 +52,7 @@ class StandByActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applyShowWhenLocked(true)
+        ShortcutManagerCompat.reportShortcutUsed(this, SHORTCUT_ID)
 
         onBackPressedDispatcher.addCallback(this) { exitStandBy() }
 
@@ -145,6 +147,7 @@ class StandByActivity : ComponentActivity() {
     }
 
     companion object {
+        const val SHORTCUT_ID = "start_standby"
         const val EXTRA_FORCE = "com.nitestand.standbyclock.extra.FORCE"
 
         /** @param force start immediately regardless of power/orientation (preview / manual). */

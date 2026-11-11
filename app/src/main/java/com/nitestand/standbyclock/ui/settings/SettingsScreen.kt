@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -231,12 +232,11 @@ private fun LazyListScope.settingsContent(
         SwitchRow(R.string.pref_burn_in, R.string.pref_burn_in_summary, s.burnInProtection) { v -> update { it.copy(burnInProtection = v) } }
     }
     item {
-        val context = LocalContext.current
         ChoiceRow(
             title = R.string.pref_burn_in_interval,
             options = StandBySettings.BURN_IN_INTERVALS,
             selected = s.burnInIntervalSeconds,
-            label = { context.getString(R.string.seconds_value, it) },
+            label = { pluralStringResource(R.plurals.seconds_value, it, it) },
             enabled = s.burnInProtection,
         ) { v -> update { it.copy(burnInIntervalSeconds = v) } }
     }

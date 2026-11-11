@@ -133,7 +133,10 @@
     <string name="pref_burn_in_interval">Movement interval</string>
     <string name="pref_screensaver_summary">Choose StandBy Clock as the screen saver for automatic StandBy while charging</string>
     <string name="about_version">Version</string>
-    <string name="seconds_value">Every %1$d seconds</string>
+    <plurals name="seconds_value">
+        <item quantity="one">Every %1$d second</item>
+        <item quantity="other">Every %1$d seconds</item>
+    </plurals>
 
     <string name="theme_classic">Classic</string>
     <string name="theme_minimal">Minimal</string>
