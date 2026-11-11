@@ -1,55 +1,56 @@
 package com.nitestand.standbyclock.ui.standby
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateIntOffsetAsState
-import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.nitestand.standbyclock.display.BurnInShifter
-import com.nitestand.standbyclock.display.ShiftOffset
+import com.nitestand.standbyclock.ui.motion.Motion
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/** Current burn-in drift in px; read it in a graphicsLayer so movement never recomposes. */
+class BurnInDrift internal constructor(
+    private val x: Animatable<Float, *>,
+    private val y: Animatable<Float, *>,
+) {
+    val dx: Float get() = x.value
+    val dy: Float get() = y.value
+}
 
 /**
- * Current burn-in protection offset. Every [intervalSeconds] the content drifts a few dp to a
- * new position over several seconds (or snaps when reduced motion is requested). The timer
- * runs only while the hosting lifecycle is STARTED.
+ * Invisible burn-in protection: every [intervalSeconds] the stage glides a few dp to the next
+ * point of a deterministic path, with a slow symmetric ease (8 s by day, ~13 s at night) and
+ * sub-pixel precision, so it never visibly steps or jumps. Runs only while the surface is STARTED.
  */
 @Composable
-fun rememberBurnInOffset(enabled: Boolean, intervalSeconds: Int, reduceMotion: Boolean): IntOffset {
+fun rememberBurnInDrift(enabled: Boolean, intervalSeconds: Int, motion: Motion): BurnInDrift {
     val shifter = remember { BurnInShifter() }
-    var target by remember { mutableStateOf(ShiftOffset(0, 0)) }
+    val x = remember { Animatable(0f) }
+    val y = remember { Animatable(0f) }
+    val density = LocalDensity.current.density
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(enabled, intervalSeconds, lifecycleOwner) {
+    LaunchedEffect(enabled, intervalSeconds, motion, lifecycleOwner) {
         if (!enabled) {
-            target = ShiftOffset(0, 0)
+            launch { x.animateTo(0f, tween(motion.ms(Motion.BURN_IN_MS), easing = Motion.EaseInOut)) }
+            launch { y.animateTo(0f, tween(motion.ms(Motion.BURN_IN_MS), easing = Motion.EaseInOut)) }
             return@LaunchedEffect
         }
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
                 delay(intervalSeconds * 1_000L)
-                target = shifter.next()
+                val next = shifter.next()
+                val spec = tween<Float>(motion.ms(Motion.BURN_IN_MS), easing = Motion.EaseInOut)
+                launch { x.animateTo(next.xDp * density, spec) }
+                launch { y.animateTo(next.yDp * density, spec) }
             }
         }
     }
-
-    val density = LocalDensity.current
-    val targetPx = with(density) { IntOffset(target.xDp.dp.roundToPx(), target.yDp.dp.roundToPx()) }
-    val animated by animateIntOffsetAsState(
-        targetValue = targetPx,
-        animationSpec = if (reduceMotion) snap() else tween(durationMillis = 4_000, easing = LinearEasing),
-        label = "burnIn",
-    )
-    return animated
+    return remember { BurnInDrift(x, y) }
 }

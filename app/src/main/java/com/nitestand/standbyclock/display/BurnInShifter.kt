@@ -19,7 +19,8 @@ class BurnInShifter(
     private val largeRadiusDp: Int = 14,
     private val maxStepDp: Int = 3,
     private val repositionEvery: Int = 12,
-    private val random: Random = Random.Default,
+    /** Seeded by default so the drift path is deterministic (and testable). */
+    private val random: Random = Random(DEFAULT_SEED),
 ) {
     init {
         require(smallRadiusDp in 1..largeRadiusDp)
@@ -53,6 +54,10 @@ class BurnInShifter(
         }
         current = candidate
         return candidate
+    }
+
+    companion object {
+        const val DEFAULT_SEED = 0x5713_B1
     }
 
     private fun stepToward(value: Int, anchor: Int): Int {
