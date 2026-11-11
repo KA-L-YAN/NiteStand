@@ -17,6 +17,8 @@ import com.nitestand.standbyclock.settings.StandBySettings
 data class StandByStyle(
     val primary: Color,
     val secondary: Color,
+    /** Faint metadata (page dots, hints): the third level of the hierarchy. */
+    val tertiary: Color = secondary.copy(alpha = secondary.alpha * 0.55f),
     val accent: Color,
     val ghost: Color,
     /** LED colour for the retro seven-segment face. */
@@ -31,9 +33,31 @@ data class StandByStyle(
 ) {
     val night: Boolean get() = nightFraction >= 0.5f
 
+    /** Interpolates every colour; used for smooth colour and night transitions. */
+    fun lerpTo(target: StandByStyle, f: Float): StandByStyle {
+        if (f <= 0f) return this
+        if (f >= 1f) return target
+        return StandByStyle(
+            primary = lerp(primary, target.primary, f),
+            secondary = lerp(secondary, target.secondary, f),
+            tertiary = lerp(tertiary, target.tertiary, f),
+            accent = lerp(accent, target.accent, f),
+            ghost = lerp(ghost, target.ghost, f),
+            retro = lerp(retro, target.retro, f),
+            gradient = gradient.zip(target.gradient) { a, b -> lerp(a, b, f) },
+            hands = lerp(hands, target.hands, f),
+            background = lerp(background, target.background, f),
+            nightFraction = nightFraction + (target.nightFraction - nightFraction) * f,
+            reduceMotion = target.reduceMotion,
+        )
+    }
+
     companion object {
-        /** StandBy night red: deep, slightly desaturated, never pure white. */
-        val NightRed = Color(0xFFC8322A)
+        /**
+         * Night red: a muted, slightly warm low-light red (not #FF0000), chosen to read like a dim
+         * OLED glow. Hierarchy comes from opacity: primary ≈ 0.86, secondary ≈ 0.48, tertiary ≈ 0.2.
+         */
+        val NightRed = Color(0xFFB8352B)
         private val Gray = Color(0xFF8E8E93)
         private val HandWhite = Color(0xFFF2F2F7)
 
@@ -48,18 +72,7 @@ data class StandByStyle(
             val day = day(theme, palette)
             val f = nightFraction.coerceIn(0f, 1f)
             if (f == 0f) return day.copy(reduceMotion = reduceMotion)
-            val night = night(theme)
-            return StandByStyle(
-                primary = lerp(day.primary, night.primary, f),
-                secondary = lerp(day.secondary, night.secondary, f),
-                accent = lerp(day.accent, night.accent, f),
-                ghost = lerp(day.ghost, night.ghost, f),
-                retro = lerp(day.retro, night.retro, f),
-                gradient = day.gradient.zip(night.gradient) { a, b -> lerp(a, b, f) },
-                hands = lerp(day.hands, night.hands, f),
-                nightFraction = f,
-                reduceMotion = reduceMotion,
-            )
+            return day.lerpTo(night(theme), f).copy(nightFraction = f, reduceMotion = reduceMotion)
         }
 
         private fun day(theme: ClockTheme, palette: ClockPalette): StandByStyle {
@@ -89,11 +102,12 @@ data class StandByStyle(
         }
 
         private fun night(theme: ClockTheme): StandByStyle {
-            val dim = if (ClockFaceCatalog.spec(theme).fixedDim) 0.45f else 0.82f
+            val dim = if (ClockFaceCatalog.spec(theme).fixedDim) 0.45f else 0.86f
             return StandByStyle(
                 primary = NightRed.copy(alpha = dim),
-                secondary = NightRed.copy(alpha = 0.45f),
-                accent = NightRed.copy(alpha = 0.9f),
+                secondary = NightRed.copy(alpha = 0.48f),
+                tertiary = NightRed.copy(alpha = 0.2f),
+                accent = NightRed.copy(alpha = 0.72f),
                 ghost = NightRed.copy(alpha = 0.05f),
                 retro = NightRed.copy(alpha = dim),
                 gradient = listOf(NightRed.copy(alpha = dim), Color(0xFF9E2620).copy(alpha = dim)),
