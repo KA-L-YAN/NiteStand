@@ -125,4 +125,4 @@ Phase: v2.2.1 — automatic launch: real root cause fixed
   and pass -Probolectric.dependency.dir=<dir>.
 - Release signing key lives outside the repo (/root/.standby-signing in the build container only).
 
-Last verified commit: 769ee4b (branch ccr-6cf7a3e0-k2qpji)
+Last verified commit: b7b25dd (branch ccr-6cf7a3e0-k2qpji)
