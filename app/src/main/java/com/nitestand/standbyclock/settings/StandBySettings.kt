@@ -41,6 +41,8 @@ data class StandBySettings(
     val worldSecondaryCity: String = "london",
     // Widgets — off by default: the StandBy screen is just the clock.
     val showPanel: Boolean = false,
+    /** Second StandBy page (swipe sideways) with date, battery, alarm and weather as floating type. */
+    val showInfoPage: Boolean = true,
     val showDateWidget: Boolean = true,
     val showBatteryWidget: Boolean = true,
     val showAlarmWidget: Boolean = true,

@@ -81,7 +81,7 @@ import com.nitestand.standbyclock.clock.HourFormat
 import com.nitestand.standbyclock.clock.TickInterval
 import com.nitestand.standbyclock.clock.WorldCities
 import com.nitestand.standbyclock.settings.StandBySettings
-import com.nitestand.standbyclock.ui.clock.ClockFace
+import com.nitestand.standbyclock.ui.clock.ClockFaceView
 import com.nitestand.standbyclock.ui.components.description
 import com.nitestand.standbyclock.ui.components.label
 import com.nitestand.standbyclock.ui.theme.StandByStyle
@@ -189,7 +189,7 @@ internal fun previewData(sources: WidgetDataSources, settings: StandBySettings, 
 }
 
 @Composable
-private fun FacePreview(data: ClockFaceData, style: StandByStyle, selected: Boolean, modifier: Modifier = Modifier) {
+internal fun FacePreview(data: ClockFaceData, style: StandByStyle, selected: Boolean, modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
@@ -203,7 +203,7 @@ private fun FacePreview(data: ClockFaceData, style: StandByStyle, selected: Bool
             )
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
-        ClockFace(data, style, Modifier.fillMaxSize(), animate = false)
+        ClockFaceView(data, style, Modifier.fillMaxSize())
     }
 }
 
@@ -287,7 +287,7 @@ private fun FaceDetailSheet(
                 val current = ClockFaceCatalog.paletteFor(settings, spec.id)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     spec.palettes.forEach { palette ->
-                        ColorSwatch(palette, palette == current, expressive = spec.category == FaceCategory.EXPRESSIVE || spec.id == ClockTheme.DIGITAL_COLOR) {
+                        ColorSwatch(palette, palette == current, expressive = spec.category == FaceCategory.DECORATIVE || spec.id == ClockTheme.DIGITAL_COLOR) {
                             onUpdate { it.copy(faceColors = it.faceColors + (spec.id to palette)) }
                         }
                     }
@@ -380,7 +380,7 @@ private fun OptionSwitch(title: Int, checked: Boolean, onChange: (Boolean) -> Un
 }
 
 @Composable
-private fun ColorSwatch(palette: ClockPalette, selected: Boolean, expressive: Boolean, onClick: () -> Unit) {
+internal fun ColorSwatch(palette: ClockPalette, selected: Boolean, expressive: Boolean, onClick: () -> Unit) {
     val label = palette.label()
     val fill = if (expressive) {
         Brush.linearGradient(listOf(Color(palette.gradientStart), Color(palette.gradientEnd)))

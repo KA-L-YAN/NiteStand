@@ -1,8 +1,28 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 
 package com.nitestand.standbyclock.ui.settings
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nitestand.standbyclock.clock.ClockFaceCatalog
+import com.nitestand.standbyclock.clock.ClockTheme
+import com.nitestand.standbyclock.clock.TickInterval
+import com.nitestand.standbyclock.ui.gallery.ColorSwatch
+import com.nitestand.standbyclock.ui.gallery.FacePreview
+import com.nitestand.standbyclock.ui.gallery.previewData
+import com.nitestand.standbyclock.ui.motion.Motion
+import com.nitestand.standbyclock.ui.standby.rememberAnimatedStyle
+import com.nitestand.standbyclock.ui.theme.StandByStyle
+import com.nitestand.standbyclock.widgets.WidgetDataSources
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -81,6 +101,7 @@ fun SettingsScreen(
     onToggleWatcher: (Boolean) -> Unit = { enable -> onUpdate { it.copy(lockScreenWatcher = enable) } },
     onOpenDiagnostics: () -> Unit = {},
     onOpenClockFaces: () -> Unit = {},
+    sources: WidgetDataSources? = null,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
@@ -107,7 +128,7 @@ fun SettingsScreen(
                 Modifier.widthIn(max = 720.dp).fillMaxWidth(),
                 contentPadding = PaddingValues(bottom = 32.dp),
             ) {
-                settingsContent(settings, hasOrientationSensor, onUpdate, onOpenScreenSaverSettings, onToggleWatcher, onOpenDiagnostics, onOpenClockFaces)
+                settingsContent(settings, hasOrientationSensor, onUpdate, onOpenScreenSaverSettings, onToggleWatcher, onOpenDiagnostics, onOpenClockFaces, sources)
             }
         }
     }
@@ -121,39 +142,67 @@ private fun LazyListScope.settingsContent(
     onToggleWatcher: (Boolean) -> Unit,
     onOpenDiagnostics: () -> Unit,
     onOpenClockFaces: () -> Unit,
+    sources: WidgetDataSources?,
 ) {
-    // ---------------------------------------------------------------- General
-    item { SectionHeader(R.string.section_general) }
-    item {
-        SwitchRow(R.string.pref_enable, R.string.pref_enable_summary, s.standByEnabled) { v -> update { it.copy(standByEnabled = v) } }
+    // ---------------------------------------------------------------- Clock face
+    group(R.string.section_clock_face) {
+        if (sources != null) CurrentFacePreview(s, sources, onOpenClockFaces)
+        NavRow(
+            R.string.pref_choose_clock,
+            "${ClockFaceCatalog.spec(s.clockTheme).category.label()} · ${s.clockTheme.label()}",
+            onOpenClockFaces,
+        )
     }
-    item {
-        SwitchRow(R.string.pref_auto_start, R.string.pref_auto_start_summary, s.autoStart, enabled = s.standByEnabled) { v ->
-            update { it.copy(autoStart = v) }
+
+    // ---------------------------------------------------------------- Appearance
+    group(R.string.section_appearance) {
+        ColorRow(s, update)
+        GroupDivider()
+        ChoiceRow(R.string.pref_brightness, BrightnessLevel.entries, s.brightness, { it.label() }, summary = R.string.pref_brightness_summary) { v ->
+            update { it.copy(brightness = v) }
         }
-    }
-    item {
-        SwitchRow(R.string.pref_require_charging, R.string.pref_require_charging_summary, s.requireCharging, enabled = s.standByEnabled) { v ->
-            update { it.copy(activationMode = ActivationMode.from(v, it.requireLandscape)) }
+        GroupDivider()
+        ChoiceRow(R.string.pref_night_mode, NightMode.entries, s.nightMode, { it.label() }, summary = R.string.pref_night_mode_summary) { v ->
+            update { it.copy(nightMode = v) }
         }
-    }
-    item {
-        SwitchRow(
-            R.string.pref_require_landscape,
-            if (hasOrientationSensor) R.string.pref_require_landscape_summary else R.string.pref_require_landscape_no_sensor,
-            s.requireLandscape,
-            enabled = s.standByEnabled,
-        ) { v -> update { it.copy(activationMode = ActivationMode.from(it.requireCharging, v)) } }
-    }
-    item {
-        SwitchRow(R.string.pref_lock_screen, R.string.pref_lock_screen_summary, s.showOnLockScreen) { v ->
-            update { it.copy(showOnLockScreen = v) }
+        if (s.nightMode == NightMode.SCHEDULED) {
+            TimeRow(R.string.pref_night_start, s.nightStartMinutes, s.hourFormat, enabled = true) { v -> update { it.copy(nightStartMinutes = v) } }
+            TimeRow(R.string.pref_night_end, s.nightEndMinutes, s.hourFormat, enabled = true) { v -> update { it.copy(nightEndMinutes = v) } }
         }
     }
 
-    // ---------------------------------------------------------------- Activation
-    item { SectionHeader(R.string.section_activation) }
-    item {
+    // ---------------------------------------------------------------- Time
+    group(R.string.section_time) {
+        ChoiceRow(R.string.pref_hour_format, HourFormat.entries, s.hourFormat, { it.label() }) { v -> update { it.copy(hourFormat = v) } }
+        if (s.hourFormat != HourFormat.TWENTY_FOUR_HOUR) {
+            SwitchRow(R.string.pref_show_am_pm, R.string.pref_show_am_pm_summary, s.showAmPm) { v -> update { it.copy(showAmPm = v) } }
+        }
+        GroupDivider()
+        SwitchRow(R.string.pref_show_seconds, R.string.pref_show_seconds_summary, s.showSeconds) { v -> update { it.copy(showSeconds = v) } }
+        GroupDivider()
+        SwitchRow(R.string.pref_show_date, R.string.pref_show_date_summary, s.showDate) { v -> update { it.copy(showDate = v) } }
+        if (s.showDate) {
+            ChoiceRow(R.string.pref_date_style, DateStyle.entries, s.dateStyle, { it.label() }) { v -> update { it.copy(dateStyle = v) } }
+        }
+    }
+
+    // ---------------------------------------------------------------- Information
+    group(R.string.section_information) {
+        SwitchRow(R.string.pref_info_page, R.string.pref_info_page_summary, s.showInfoPage) { v -> update { it.copy(showInfoPage = v) } }
+        GroupDivider()
+        SwitchRow(R.string.pref_show_panel, R.string.pref_show_panel_summary, s.showPanel) { v -> update { it.copy(showPanel = v) } }
+        GroupDivider()
+        val any = s.showInfoPage || s.showPanel
+        SwitchRow(R.string.widget_date, null, s.showDateWidget, enabled = any) { v -> update { it.copy(showDateWidget = v) } }
+        SwitchRow(R.string.widget_battery, null, s.showBatteryWidget, enabled = any) { v -> update { it.copy(showBatteryWidget = v) } }
+        SwitchRow(R.string.widget_alarm, R.string.pref_alarm_summary, s.showAlarmWidget, enabled = any) { v -> update { it.copy(showAlarmWidget = v) } }
+        SwitchRow(R.string.pref_weather, R.string.pref_weather_summary, s.showWeatherWidget, enabled = any) { v -> update { it.copy(showWeatherWidget = v) } }
+    }
+
+    // ---------------------------------------------------------------- Behavior
+    group(R.string.section_behavior) {
+        SwitchRow(R.string.pref_enable, R.string.pref_enable_summary, s.standByEnabled) { v -> update { it.copy(standByEnabled = v) } }
+        GroupDivider()
         ChoiceRow(
             title = R.string.pref_activation_mode,
             options = ActivationMode.entries,
@@ -161,25 +210,21 @@ private fun LazyListScope.settingsContent(
             label = { it.label() },
             description = { it.description() },
             enabled = s.standByEnabled,
+            summaryText = s.activationMode.description(),
         ) { v -> update { it.copy(activationMode = v) } }
-    }
-    item {
-        Text(
-            s.activationMode.description(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        )
-    }
-    item {
+        if (s.activationMode.isAutomatic) {
+            SwitchRow(R.string.pref_auto_start, R.string.pref_auto_start_summary, s.autoStart, enabled = s.standByEnabled) { v ->
+                update { it.copy(autoStart = v) }
+            }
+        }
         SwitchRow(
             R.string.pref_watcher,
             if (s.activationMode.supportsLockScreenWatcher) R.string.pref_watcher_summary else R.string.pref_watcher_unavailable,
             s.lockScreenWatcher && s.activationMode.supportsLockScreenWatcher,
             enabled = s.standByEnabled && s.activationMode.supportsLockScreenWatcher,
         ) { v -> onToggleWatcher(v) }
-    }
-    item {
+        SwitchRow(R.string.pref_lock_screen, R.string.pref_lock_screen_summary, s.showOnLockScreen) { v -> update { it.copy(showOnLockScreen = v) } }
+        GroupDivider()
         ChoiceRow(
             title = R.string.pref_battery_timeout,
             options = StandBySettings.BATTERY_TIMEOUTS,
@@ -187,8 +232,12 @@ private fun LazyListScope.settingsContent(
             label = { if (it == 0) stringResource(R.string.battery_timeout_never) else pluralStringResource(R.plurals.minutes_value, it, it) },
             summary = R.string.pref_battery_timeout_summary,
         ) { v -> update { it.copy(batteryTimeoutMinutes = v) } }
+        GroupDivider()
+        SwitchRow(R.string.pref_burn_in, R.string.pref_burn_in_summary, s.burnInProtection) { v -> update { it.copy(burnInProtection = v) } }
     }
-    item {
+
+    // ---------------------------------------------------------------- Advanced
+    group(R.string.section_advanced) {
         ChoiceRow(
             title = R.string.pref_sensitivity,
             options = OrientationSensitivity.entries,
@@ -196,86 +245,6 @@ private fun LazyListScope.settingsContent(
             label = { it.label() },
             enabled = s.standByEnabled && s.requireLandscape && hasOrientationSensor,
         ) { v -> update { it.copy(orientationSensitivity = v) } }
-    }
-
-    // ---------------------------------------------------------------- Clock
-    item { SectionHeader(R.string.section_clock) }
-    item {
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.gallery_title)) },
-            supportingContent = {
-                Text(s.clockTheme.label(), color = MaterialTheme.colorScheme.primary)
-            },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
-            modifier = Modifier.heightIn(min = 56.dp).selectable(selected = false, role = Role.Button, onClick = onOpenClockFaces),
-        )
-    }
-    item {
-        ChoiceRow(R.string.pref_hour_format, HourFormat.entries, s.hourFormat, { it.label() }) { v ->
-            update { it.copy(hourFormat = v) }
-        }
-    }
-    item {
-        SwitchRow(R.string.pref_show_am_pm, R.string.pref_show_am_pm_summary, s.showAmPm, enabled = s.hourFormat != HourFormat.TWENTY_FOUR_HOUR) { v ->
-            update { it.copy(showAmPm = v) }
-        }
-    }
-    item { SwitchRow(R.string.pref_show_seconds, R.string.pref_show_seconds_summary, s.showSeconds) { v -> update { it.copy(showSeconds = v) } } }
-    item { SwitchRow(R.string.pref_show_date, R.string.pref_show_date_summary, s.showDate) { v -> update { it.copy(showDate = v) } } }
-    item {
-        ChoiceRow(R.string.pref_date_style, DateStyle.entries, s.dateStyle, { it.label() }, enabled = s.showDate) { v ->
-            update { it.copy(dateStyle = v) }
-        }
-    }
-
-    // ---------------------------------------------------------------- Widgets
-    item { SectionHeader(R.string.section_widgets) }
-    item { SwitchRow(R.string.pref_show_panel, R.string.pref_show_panel_summary, s.showPanel) { v -> update { it.copy(showPanel = v) } } }
-    item { SwitchRow(R.string.widget_date, null, s.showDateWidget, enabled = s.showPanel) { v -> update { it.copy(showDateWidget = v) } } }
-    item { SwitchRow(R.string.widget_battery, null, s.showBatteryWidget, enabled = s.showPanel) { v -> update { it.copy(showBatteryWidget = v) } } }
-    item {
-        SwitchRow(R.string.widget_alarm, R.string.pref_alarm_summary, s.showAlarmWidget, enabled = s.showPanel) { v ->
-            update { it.copy(showAlarmWidget = v) }
-        }
-    }
-    item {
-        SwitchRow(R.string.pref_weather, R.string.pref_weather_summary, s.showWeatherWidget, enabled = s.showPanel) { v ->
-            update { it.copy(showWeatherWidget = v) }
-        }
-    }
-
-    // ---------------------------------------------------------------- Appearance
-    item { SectionHeader(R.string.section_appearance) }
-    item {
-        ChoiceRow(R.string.pref_brightness, BrightnessLevel.entries, s.brightness, { it.label() }, summary = R.string.pref_brightness_summary) { v ->
-            update { it.copy(brightness = v) }
-        }
-    }
-    item {
-        ChoiceRow(R.string.pref_night_mode, NightMode.entries, s.nightMode, { it.label() }, summary = R.string.pref_night_mode_summary) { v ->
-            update { it.copy(nightMode = v) }
-        }
-    }
-    item {
-        TimeRow(R.string.pref_night_start, s.nightStartMinutes, s.hourFormat, enabled = s.nightMode == NightMode.SCHEDULED) { v ->
-            update { it.copy(nightStartMinutes = v) }
-        }
-    }
-    item {
-        TimeRow(R.string.pref_night_end, s.nightEndMinutes, s.hourFormat, enabled = s.nightMode == NightMode.SCHEDULED) { v ->
-            update { it.copy(nightEndMinutes = v) }
-        }
-    }
-    item {
-        SwitchRow(R.string.pref_reduce_motion, R.string.pref_reduce_motion_summary, s.reduceMotion) { v -> update { it.copy(reduceMotion = v) } }
-    }
-
-    // ---------------------------------------------------------------- Burn-in
-    item { SectionHeader(R.string.section_burn_in) }
-    item {
-        SwitchRow(R.string.pref_burn_in, R.string.pref_burn_in_summary, s.burnInProtection) { v -> update { it.copy(burnInProtection = v) } }
-    }
-    item {
         ChoiceRow(
             title = R.string.pref_burn_in_interval,
             options = StandBySettings.BURN_IN_INTERVALS,
@@ -283,33 +252,83 @@ private fun LazyListScope.settingsContent(
             label = { pluralStringResource(R.plurals.seconds_value, it, it) },
             enabled = s.burnInProtection,
         ) { v -> update { it.copy(burnInIntervalSeconds = v) } }
-    }
-
-    // ---------------------------------------------------------------- Screen saver & about
-    item { SectionHeader(R.string.section_screensaver) }
-    item {
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.action_open_screensaver)) },
-            supportingContent = { Text(stringResource(R.string.pref_screensaver_summary)) },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
-            modifier = Modifier.selectable(selected = false, role = Role.Button, onClick = onOpenScreenSaverSettings),
-        )
-    }
-    item {
-        ListItem(
-            headlineContent = { Text(stringResource(R.string.diagnostics_title)) },
-            supportingContent = { Text(stringResource(R.string.pref_diagnostics_summary)) },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
-            modifier = Modifier.selectable(selected = false, role = Role.Button, onClick = onOpenDiagnostics),
-        )
-    }
-    item { LicensesRow() }
-    item {
+        SwitchRow(R.string.pref_reduce_motion, R.string.pref_reduce_motion_summary, s.reduceMotion) { v -> update { it.copy(reduceMotion = v) } }
+        GroupDivider()
+        NavRow(R.string.action_open_screensaver, stringResource(R.string.pref_screensaver_summary), onOpenScreenSaverSettings)
+        NavRow(R.string.diagnostics_title, stringResource(R.string.pref_diagnostics_summary), onOpenDiagnostics)
+        LicensesRow()
         ListItem(
             headlineContent = { Text(stringResource(R.string.about_version)) },
             supportingContent = { Text(BuildConfig.VERSION_NAME) },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
+    }
+    item { Spacer(Modifier.height(24.dp)) }
+}
+
+/** One inset group: a small header and rows on a single softly rounded surface. */
+private fun LazyListScope.group(title: Int, content: @Composable ColumnScope.() -> Unit) {
+    item(key = "header_$title") { SectionHeader(title) }
+    item(key = "group_$title") {
+        Column(
+            Modifier
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(26.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                .padding(vertical = 6.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun GroupDivider() {
+    HorizontalDivider(Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+}
+
+@Composable
+private fun NavRow(title: Int, value: String, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(title)) },
+        supportingContent = { Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        trailingContent = { Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.outline) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.heightIn(min = 56.dp).selectable(selected = false, role = Role.Button, onClick = onClick),
+    )
+}
+
+/** Live preview of the selected face; tapping opens the gallery. */
+@Composable
+private fun CurrentFacePreview(s: StandBySettings, sources: WidgetDataSources, onOpen: () -> Unit) {
+    val ticks = remember(sources) { sources.ticker.ticks(TickInterval.MINUTE) }
+    val now by ticks.collectAsStateWithLifecycle(initialValue = null)
+    val time = now ?: return
+    val data = remember(s, time) { previewData(sources, s.copy(showSeconds = false), s.clockTheme, time) }
+    val style = StandByStyle.forSettings(s, reduceMotion = true)
+    Box(Modifier.padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(22.dp)).selectable(selected = false, role = Role.Button, onClick = onOpen)) {
+        FacePreview(data, rememberAnimatedStyle(style, Motion()), selected = false)
+    }
+}
+
+/** Visual colour picker for the selected face (only the colours that face supports). */
+@Composable
+private fun ColorRow(s: StandBySettings, update: ((StandBySettings) -> StandBySettings) -> Unit) {
+    val spec = ClockFaceCatalog.spec(s.clockTheme)
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Text(stringResource(R.string.gallery_color), style = MaterialTheme.typography.bodyLarge)
+        if (spec.palettes.isEmpty()) {
+            Text(stringResource(R.string.gallery_fixed_colors), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            val current = ClockFaceCatalog.paletteFor(s)
+            FlowRow(Modifier.padding(top = 6.dp)) {
+                spec.palettes.forEach { palette ->
+                    ColorSwatch(palette, palette == current, expressive = spec.id == ClockTheme.DIGITAL_COLOR || spec.id == ClockTheme.BUBBLE) {
+                        update { it.copy(faceColors = it.faceColors + (s.clockTheme to palette)) }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -317,10 +336,10 @@ private fun LazyListScope.settingsContent(
 private fun SectionHeader(title: Int) {
     Text(
         stringResource(title),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier
-            .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 4.dp)
+            .padding(start = 32.dp, end = 32.dp, top = 26.dp, bottom = 8.dp)
             .semantics { heading() },
     )
 }
@@ -337,7 +356,7 @@ private fun SwitchRow(
         headlineContent = { Text(stringResource(title)) },
         supportingContent = summary?.let { { Text(stringResource(it)) } },
         trailingContent = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier
             .heightIn(min = 56.dp)
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
@@ -353,6 +372,7 @@ private fun <T> ChoiceRow(
     enabled: Boolean = true,
     summary: Int? = null,
     description: (@Composable (T) -> String)? = null,
+    summaryText: String? = null,
     onSelect: (T) -> Unit,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
@@ -362,9 +382,10 @@ private fun <T> ChoiceRow(
             Column {
                 Text(label(selected), color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
                 summary?.let { Text(stringResource(it), style = MaterialTheme.typography.bodySmall) }
+                summaryText?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
         },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier
             .heightIn(min = 56.dp)
             .selectable(selected = false, enabled = enabled, role = Role.Button) { open = true },
@@ -423,7 +444,7 @@ private fun TimeRow(title: Int, minutes: Int, hourFormat: HourFormat, enabled: B
         supportingContent = {
             Text(formatted, color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
         },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier
             .heightIn(min = 56.dp)
             .selectable(selected = false, enabled = enabled, role = Role.Button) { open = true },
@@ -453,7 +474,7 @@ private fun LicensesRow() {
     ListItem(
         headlineContent = { Text(stringResource(R.string.licenses_title)) },
         supportingContent = { Text(stringResource(R.string.licenses_summary)) },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.heightIn(min = 56.dp).selectable(selected = false, role = Role.Button) { open = true },
     )
     if (open) {

@@ -146,6 +146,7 @@ class MainActivity : ComponentActivity() {
                                 galleryReturn = Screen.SETTINGS
                                 screen = Screen.CLOCK_FACES
                             },
+                            sources = appContainer.widgetDataSources,
                         )
                         Screen.CLOCK_FACES -> ClockGalleryScreen(
                             settings = current,

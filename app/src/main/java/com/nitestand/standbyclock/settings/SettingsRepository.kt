@@ -71,6 +71,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
         fun faceColorKey(theme: ClockTheme) = stringPreferencesKey("face_color_${theme.name}")
         val SHOW_PANEL = booleanPreferencesKey("show_panel")
+        val SHOW_INFO_PAGE = booleanPreferencesKey("show_info_page")
         val WIDGET_DATE = booleanPreferencesKey("widget_date")
         val WIDGET_BATTERY = booleanPreferencesKey("widget_battery")
         val WIDGET_ALARM = booleanPreferencesKey("widget_alarm")
@@ -111,6 +112,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 worldPrimaryCity = prefs[WORLD_PRIMARY] ?: d.worldPrimaryCity,
                 worldSecondaryCity = prefs[WORLD_SECONDARY] ?: d.worldSecondaryCity,
                 showPanel = prefs[SHOW_PANEL] ?: d.showPanel,
+                showInfoPage = prefs[SHOW_INFO_PAGE] ?: d.showInfoPage,
                 showDateWidget = prefs[WIDGET_DATE] ?: d.showDateWidget,
                 showBatteryWidget = prefs[WIDGET_BATTERY] ?: d.showBatteryWidget,
                 showAlarmWidget = prefs[WIDGET_ALARM] ?: d.showAlarmWidget,
@@ -148,6 +150,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             }
             prefs[SCHEMA_VERSION] = CURRENT_SCHEMA
             prefs[SHOW_PANEL] = s.showPanel
+            prefs[SHOW_INFO_PAGE] = s.showInfoPage
             prefs[WIDGET_DATE] = s.showDateWidget
             prefs[WIDGET_BATTERY] = s.showBatteryWidget
             prefs[WIDGET_ALARM] = s.showAlarmWidget

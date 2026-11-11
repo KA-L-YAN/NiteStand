@@ -27,6 +27,9 @@ fun ClockTheme.label(): String = stringResource(
         ClockTheme.ANALOG_MINIMAL -> R.string.face_analog_minimal
         ClockTheme.ANALOG_MODERN -> R.string.face_analog_modern
         ClockTheme.ANALOG_ELEGANT -> R.string.face_analog_elegant
+        ClockTheme.ANALOG_LARGE -> R.string.face_analog_large
+        ClockTheme.ANALOG_LINE -> R.string.face_analog_line
+        ClockTheme.GEOMETRIC -> R.string.face_geometric
         ClockTheme.BUBBLE -> R.string.face_bubble
         ClockTheme.SERIF -> R.string.face_serif
         ClockTheme.LINE -> R.string.face_line
@@ -48,6 +51,9 @@ fun ClockTheme.description(): String = stringResource(
         ClockTheme.ANALOG_MINIMAL -> R.string.face_analog_minimal_desc
         ClockTheme.ANALOG_MODERN -> R.string.face_analog_modern_desc
         ClockTheme.ANALOG_ELEGANT -> R.string.face_analog_elegant_desc
+        ClockTheme.ANALOG_LARGE -> R.string.face_analog_large_desc
+        ClockTheme.ANALOG_LINE -> R.string.face_analog_line_desc
+        ClockTheme.GEOMETRIC -> R.string.face_geometric_desc
         ClockTheme.BUBBLE -> R.string.face_bubble_desc
         ClockTheme.SERIF -> R.string.face_serif_desc
         ClockTheme.LINE -> R.string.face_line_desc
@@ -62,7 +68,7 @@ fun FaceCategory.label(): String = stringResource(
     when (this) {
         FaceCategory.DIGITAL -> R.string.category_digital
         FaceCategory.ANALOG -> R.string.category_analog
-        FaceCategory.EXPRESSIVE -> R.string.category_expressive
+        FaceCategory.DECORATIVE -> R.string.category_decorative
     },
 )
 
@@ -133,6 +139,7 @@ fun BrightnessLevel.label(): String = stringResource(
         BrightnessLevel.LOW -> R.string.brightness_low
         BrightnessLevel.MEDIUM -> R.string.brightness_medium
         BrightnessLevel.HIGH -> R.string.brightness_high
+        BrightnessLevel.NIGHT -> R.string.brightness_night
     },
 )
 
