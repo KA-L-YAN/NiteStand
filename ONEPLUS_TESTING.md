@@ -326,3 +326,53 @@ idle for a minute should show ~0 % except during the once-per-minute transition.
 
 **If it fails, capture:** a screen recording (`adb shell screenrecord /sdcard/ns.mp4`), the
 gfxinfo output, and Diagnostics › Copy report.
+
+---
+
+## 15. Automatic StandBy Launch (v2.1.0) — the critical acceptance test
+
+**Setup (once)**
+1. Install `NiteStand-2.1.0-release.apk` over the previous version.
+2. Open NiteStand › Settings › Behavior:
+   * Activation mode: **Landscape only** (or *Charging + landscape* with a charger)
+   * **Lock-screen auto start: on**
+3. Under the switch, the readiness block lists only what is still needed. Tap **Fix** on each
+   *Required* item:
+   * **Notifications** for NiteStand — allow.
+   * **Full-screen notifications** — allow. On Android 14+ this is the switch that lets Android open
+     StandBy over the lock screen. On OxygenOS it opens *Special app access › Full-screen
+     notifications*.
+   * *(Recommended)* **Battery usage: Unrestricted**, so OxygenOS does not stop the watcher.
+
+   When everything is set it shows "Ready: Android can open StandBy automatically."
+4. Diagnostics › *Automatic launch readiness* should show **Verdict: Ready**.
+
+**Test**
+1. Unlock the phone and use it normally for a few seconds.
+2. Put the OnePlus 12R horizontally on the stand.
+3. Press the power button to lock it.
+4. Wait up to ~2 s.
+
+**PASS:** the display comes back on by itself showing a black screen, the clock condenses in,
+there is no notification UI, and the phone stays locked (double-tap shows your secure lock screen).
+
+**FAIL:** a notification "StandBy didn't open automatically" appears instead.
+→ Open Diagnostics › **Last activation attempt** and copy the report. The trace shows where it
+stopped (for example "Full-screen intent posted … full-screen access DENIED", or
+"Launch blocked: StandBy did not resume (system/OEM declined the launch)").
+
+### Scenarios — record each separately
+
+| # | Scenario | Expected (documented activation model) |
+|---|---|---|
+| A | NiteStand app open, phone horizontal → press power | Screen turns back on into StandBy (trace: "phone locked … Activity resumed … renderer active") |
+| B | NiteStand closed/swiped away, phone horizontal → press power | Same as A. Requires the watcher service to be alive (Unrestricted battery). |
+| C | Phone already locked and dark, left horizontal | Nothing happens while dark (by design — no sensors without a wake). Wake it (power / double-tap to wake): StandBy opens on the lock screen (trace: "woken on lock screen"). |
+| D | Start StandBy from the app / tile / Preview | Opens immediately, no notification (trace: "Manual launch…"). |
+| E | Fallback | Turn **Full-screen notifications off** and repeat A. Expected: one quiet notification explaining that full-screen notifications are off, with an "Allow automatic start" action. Repeat locking: no further notifications until you pick the phone up or unlock. |
+| F | No loop | Let StandBy's battery timeout turn the screen off, or press power while StandBy shows. Expected: the screen stays off (no relaunch). After exiting StandBy with a double tap and pressing power while still horizontal: no relaunch. |
+
+**Capture on failure:** Diagnostics › Copy report (includes the trace),
+`adb logcat -s NiteStand:V ActivityTaskManager:I NotificationService:I` while repeating the
+test (look for "Background activity launch blocked", "full screen intent" or "Abort background
+activity starts"), and `adb shell appops get com.nitestand.standbyclock USE_FULL_SCREEN_INTENT`.

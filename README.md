@@ -255,24 +255,42 @@ Back leaves the screen saver, returning to the (still locked) lock screen.
 
 **What NiteStand does:**
 
-1. **NiteStand tile.** One tap starts StandBy, no charger needed; tap again to close. Its
+1. **NiteStand tile.** One tap starts StandBy with no charger needed; tap it again to close. Its
    active/inactive state follows the display.
-2. **Lock-screen auto start (opt-in, experimental)**, in *Landscape only*, *Charging only* or
-   *Charging + landscape* mode.
-   * A foreground service with a silent notification listens for screen on/off and unlock broadcasts.
-   * The orientation sensor runs only while the phone is awake and locked.
-   * When the mode's conditions are met, it posts a full-screen-intent notification, and the
-     system shows StandBy above the lock screen. The phone stays locked.
-   * It fires once per wake/placement, so exiting does not reopen it until the phone is picked up
-     or the screen goes off.
+2. **Lock-screen auto start (opt-in)**, in *Landscape only*, *Charging only* or
+   *Charging + landscape* mode. A foreground service with a silent notification watches the screen
+   and keyguard broadcasts.
+   - **When you lock the phone** (the screen turns off), it holds a wake lock for a few seconds,
+     takes one orientation sample and, if the mode is satisfied, starts StandBy:
+     1. A direct activity start. This only works when Android grants a background start.
+     2. A **full-screen intent**, posted while the device is non-interactive. This is the case in
+        which Android launches the target immediately, like an alarm clock. StandBy then turns the
+        display back on (`setTurnScreenOn`) above the still-locked keyguard.
+     3. Verification that the StandBy activity actually resumed.
+     4. Otherwise, **one** quiet fallback notification that says *why* (for example "Full-screen
+        notifications is off"). It is never repeated for the same placement.
+   - **When you wake the locked phone** while it's horizontal, the same pipeline runs.
+   - It fires once per placement. It re-arms only when you unlock, pick the phone up (portrait), or
+     unplug, so a StandBy timeout, the power button or exiting never relaunches it.
+   - Every step is recorded in Diagnostics › *Last activation attempt*.
 3. **Battery screen-on timeout.** On battery, StandBy keeps the screen on only for the chosen time
-   (default 30 min), then lets the system timeout turn it off.
+   (default 30 min).
 
-**Remaining hard limit:** while the screen is **off**, nothing can happen. Android gives no sensor
-data to an app whose device is asleep, unless it holds a wake lock all the time, which would drain
-the battery and is deliberately not done. So the user wakes the phone (power button, double-tap
-to wake), and StandBy follows within about a second. Apple's StandBy itself also only activates
-while charging.
+**What it requires (and nothing else):**
+- notifications allowed
+- **Full-screen notifications** allowed (Android 14+ special access)
+- the "StandBy launch" notification category left on Alert
+- recommended: Battery usage *Unrestricted*, so OxygenOS does not stop the watcher
+
+Settings shows exactly which of these is missing, with a one-tap fix.
+
+**Honest limits:**
+- While the screen is **off and you don't touch the phone**, nothing new happens. There is no
+  continuous sensor or wake lock, so StandBy starts at the moment you lock or wake the phone, not
+  minutes later.
+- Whether OxygenOS honours full-screen intents for a sideloaded app is **not verified in the build
+  environment**. The trace and test 15 in ONEPLUS_TESTING.md establish it on the device.
+- Apple's StandBy itself also only activates while charging.
 
 ## Android limitations
 
@@ -339,6 +357,7 @@ following and only requests runtime consent when you turn it on:
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Observing the locked phone; no other service type fits |
 | `USE_FULL_SCREEN_INTENT` | Showing StandBy over the lock screen from the background |
 | `RECEIVE_BOOT_COMPLETED` | Restarting the watcher after a reboot (only if enabled) |
+| `WAKE_LOCK` | Keeping the CPU awake a few seconds at screen-off to read the orientation once and verify the launch (released immediately after) |
 
 Everything else needs no permission:
 

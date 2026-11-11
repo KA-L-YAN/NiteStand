@@ -1,7 +1,30 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: v2.0.0 — premium ambient StandBy redesign
+Phase: v2.1.0 — critical fix: automatic StandBy launch
+
+## v2.1.0 — automatic launch fix (root cause and fix)
+- User report (real OnePlus 12R, 2.0.0): locking in landscape showed a "tap to show StandBy"
+  notification instead of StandBy.
+- Root cause (from the code; device behaviour unverified here):
+  1. The watcher only fired with the screen ON + keyguard locked, i.e. not when the user locks the
+     phone (screen OFF) but later on wake — the interactive-lock-screen FSI case SystemUI may
+     present as a heads-up.
+  2. The FSI notification's own text was an instruction ("Tap to show the StandBy clock"), so any
+     declined FSI (permission denied on Android 14+, demoted channel, OEM policy) looked like the
+     designed behaviour.
+  3. No verification that the activity resumed, no failure classification, no trace.
+  4. Startup: waiting UI flashed while orientation was UNKNOWN; system bars visible until ACTIVE.
+- Fix: ActivationTrigger state machine (IDLE → ACTIVATION_DETECTED → LAUNCH_REQUESTED →
+  STANDBY_ACTIVE | LAUNCH_FAILED → FALLBACK_NOTIFICATION; once per placement; re-arm on unlock /
+  portrait / unplug), screen-off activation with one-shot orientation sample under a short wake
+  lock, direct start → FSI (fresh HIGH channel v2, PendingIntent creator BAL opt-in) → resume
+  verification → single classified fallback; LaunchReadiness with in-settings fixes; ActivationTrace
+  in Diagnostics; black hold instead of waiting UI; immersive from the first frame; entrance
+  re-timed (blur-condense, Wake easing); tabular digits (no colon/neighbour movement); warm
+  night path.
+- Physical-device result: NOT verified in this environment (no device). Test 15 in
+  ONEPLUS_TESTING.md is the acceptance test.
 
 ## Current status
 - Overall: v2.0.0 implemented and verified in the build environment (JVM tests, Robolectric
@@ -16,7 +39,8 @@ Phase: v2.0.0 — premium ambient StandBy redesign
 - Last completed task: clock-face gallery (15 faces), palette colour system, central formatting
   (AM/PM, date styles), smooth night transition, brightness ramp, settings migration v2.
 - Current task: none.
-- Next task: user runs ONEPLUS_TESTING.md tests 13–14 (incl. gfxinfo frame stats); then tune
+- Next task: user runs ONEPLUS_TESTING.md test 15 (automatic launch) + scenarios A–F and sends the
+  Diagnostics report; then tests 13–14 (incl. gfxinfo frame stats); then tune
   durations/sizes from real-panel feedback. Previously: test 13 on the OnePlus 12R (photos in a dark room) and
   reports any face that needs size/brightness/spacing tuning on the real panel.
 
@@ -67,8 +91,8 @@ Phase: v2.0.0 — premium ambient StandBy redesign
 
 ## Build
 - Debug APK: SUCCESS
-- Release APK 2.0.0 (versionCode 4, R8, v2-signed, same certificate as earlier versions): SUCCESS
-- Unit + screenshot tests: PASSING (133/133; screenshots in app/build/screenshots)
+- Release APK 2.1.0 (versionCode 5, R8, v2-signed, same certificate as earlier versions): SUCCESS
+- Unit + screenshot tests: PASSING (see last report; screenshots in app/build/screenshots)
 - Lint: 0 errors, 0 warnings
 - Android tests: compile SUCCESS, not run
 
