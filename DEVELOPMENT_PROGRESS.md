@@ -104,4 +104,4 @@ Phase: v2.1.0 — critical fix: automatic StandBy launch
   and pass -Probolectric.dependency.dir=<dir>.
 - Release signing key lives outside the repo (/root/.standby-signing in the build container only).
 
-Last verified commit: e520dc2 (branch ccr-6cf7a3e0-k2qpji)
+Last verified commit: 9f8ce67 (branch ccr-6cf7a3e0-k2qpji)
