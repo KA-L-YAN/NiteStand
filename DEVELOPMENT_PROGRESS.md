@@ -136,4 +136,4 @@ Phase: v2.3.0 — real weather (Open-Meteo)
   and pass -Probolectric.dependency.dir=<dir>.
 - Release signing key lives outside the repo (/root/.standby-signing in the build container only).
 
-Last verified commit: cff3300 (branch ccr-6cf7a3e0-k2qpji)
+Last verified commit: 276cd93 (branch ccr-6cf7a3e0-k2qpji)
