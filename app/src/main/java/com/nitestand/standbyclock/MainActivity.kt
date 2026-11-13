@@ -45,6 +45,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.nitestand.standbyclock.diagnostics.ActivationTrace
 import com.nitestand.standbyclock.diagnostics.DeviceDiagnostics
 import com.nitestand.standbyclock.lockscreen.LaunchReadiness
+import com.nitestand.standbyclock.weather.weatherRequest
 import com.nitestand.standbyclock.diagnostics.DiagnosticsReport
 import com.nitestand.standbyclock.diagnostics.EventLog
 import com.nitestand.standbyclock.lockscreen.LockScreenWatcherService
@@ -204,9 +205,22 @@ class MainActivity : ComponentActivity() {
         val events by EventLog.entries.collectAsStateWithLifecycle()
         val trace by ActivationTrace.steps.collectAsStateWithLifecycle()
         val readiness = remember(snapshot) { LaunchReadiness.read(this@MainActivity) }
+        val weatherStatus by container.openMeteoWeather.lastStatus.collectAsStateWithLifecycle()
+        val weatherSection = com.nitestand.standbyclock.diagnostics.DiagnosticsSection(
+            "Weather (Open-Meteo)",
+            listOf(
+                "Enabled" to if (settings.showWeatherWidget) "Yes" else "No",
+                "Location" to when (val r = settings.weatherRequest()) {
+                    com.nitestand.standbyclock.weather.WeatherRequest.None -> "Not set"
+                    com.nitestand.standbyclock.weather.WeatherRequest.DeviceLocation -> "Approximate location"
+                    is com.nitestand.standbyclock.weather.WeatherRequest.City -> "${r.name} (${r.latitude}, ${r.longitude})"
+                },
+                "Last fetch" to weatherStatus,
+            ),
+        )
         val sections = DiagnosticsReport.activationSections(readiness, trace) + DiagnosticsReport.sections(
             snapshot, battery, orientation, showing, lastState, watcherRunning, settings, BuildConfig.VERSION_NAME,
-        )
+        ) + weatherSection
         DiagnosticsScreen(
             sections = sections,
             events = events,

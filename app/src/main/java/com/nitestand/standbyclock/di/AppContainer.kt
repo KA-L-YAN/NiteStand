@@ -10,7 +10,8 @@ import com.nitestand.standbyclock.clock.TimeFormatPreference
 import com.nitestand.standbyclock.sensors.OrientationRepository
 import com.nitestand.standbyclock.settings.SettingsMigrationV2
 import com.nitestand.standbyclock.settings.SettingsRepository
-import com.nitestand.standbyclock.weather.LocalPlaceholderWeatherProvider
+import com.nitestand.standbyclock.weather.OpenMeteoClient
+import com.nitestand.standbyclock.weather.OpenMeteoWeatherProvider
 import com.nitestand.standbyclock.weather.WeatherProvider
 import com.nitestand.standbyclock.widgets.WidgetDataSources
 import kotlinx.coroutines.CoroutineScope
@@ -44,8 +45,11 @@ class AppContainer(context: Context) {
     val clockTicker: ClockTicker by lazy { ClockTicker(appContext) }
     val timeFormat: TimeFormatPreference by lazy { TimeFormatPreference(appContext) }
 
-    /** Replace with a networked implementation to show real weather. */
-    val weatherProvider: WeatherProvider by lazy { LocalPlaceholderWeatherProvider() }
+    val weatherClient: OpenMeteoClient by lazy { OpenMeteoClient() }
+
+    /** Real weather (Open-Meteo); idle unless the weather widget is on screen. */
+    val openMeteoWeather: OpenMeteoWeatherProvider by lazy { OpenMeteoWeatherProvider(appContext, weatherClient) }
+    val weatherProvider: WeatherProvider get() = openMeteoWeather
 
     val widgetDataSources: WidgetDataSources by lazy {
         WidgetDataSources(

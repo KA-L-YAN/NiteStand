@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -76,6 +77,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
         val WIDGET_BATTERY = booleanPreferencesKey("widget_battery")
         val WIDGET_ALARM = booleanPreferencesKey("widget_alarm")
         val WIDGET_WEATHER = booleanPreferencesKey("widget_weather")
+        val WEATHER_MODE = stringPreferencesKey("weather_location_mode")
+        val WEATHER_PLACE = stringPreferencesKey("weather_place_name")
+        val WEATHER_LAT = doublePreferencesKey("weather_latitude")
+        val WEATHER_LON = doublePreferencesKey("weather_longitude")
         val BRIGHTNESS = stringPreferencesKey("brightness")
         val NIGHT_MODE = stringPreferencesKey("night_mode")
         val NIGHT_START = intPreferencesKey("night_start_minutes")
@@ -117,6 +122,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
                 showBatteryWidget = prefs[WIDGET_BATTERY] ?: d.showBatteryWidget,
                 showAlarmWidget = prefs[WIDGET_ALARM] ?: d.showAlarmWidget,
                 showWeatherWidget = prefs[WIDGET_WEATHER] ?: d.showWeatherWidget,
+                weatherLocationMode = prefs.enumOf(WEATHER_MODE, d.weatherLocationMode),
+                weatherPlaceName = prefs[WEATHER_PLACE] ?: d.weatherPlaceName,
+                weatherLatitude = prefs[WEATHER_LAT],
+                weatherLongitude = prefs[WEATHER_LON],
                 brightness = prefs.enumOf(BRIGHTNESS, d.brightness),
                 nightMode = prefs.enumOf(NIGHT_MODE, d.nightMode),
                 nightStartMinutes = prefs[NIGHT_START] ?: d.nightStartMinutes,
@@ -155,6 +164,10 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             prefs[WIDGET_BATTERY] = s.showBatteryWidget
             prefs[WIDGET_ALARM] = s.showAlarmWidget
             prefs[WIDGET_WEATHER] = s.showWeatherWidget
+            prefs[WEATHER_MODE] = s.weatherLocationMode.name
+            prefs[WEATHER_PLACE] = s.weatherPlaceName
+            if (s.weatherLatitude == null) prefs.remove(WEATHER_LAT) else prefs[WEATHER_LAT] = s.weatherLatitude
+            if (s.weatherLongitude == null) prefs.remove(WEATHER_LON) else prefs[WEATHER_LON] = s.weatherLongitude
             prefs[BRIGHTNESS] = s.brightness.name
             prefs[NIGHT_MODE] = s.nightMode.name
             prefs[NIGHT_START] = s.nightStartMinutes

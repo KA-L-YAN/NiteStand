@@ -109,8 +109,8 @@
     <string name="pref_show_panel">Beside the clock</string>
     <string name="pref_show_panel_summary">Also show information next to the clock</string>
     <string name="pref_alarm_summary">Shows alarms set in your clock app</string>
-    <string name="pref_weather">Weather (sample data)</string>
-    <string name="pref_weather_summary">Placeholder only — shows sample values, not a real forecast</string>
+    <string name="pref_weather">Weather</string>
+    <string name="pref_weather_summary">Current weather from Open-Meteo for your city</string>
     <string name="pref_brightness">StandBy brightness</string>
     <string name="pref_brightness_summary">Applies only while StandBy is showing; your system brightness is not changed</string>
     <string name="pref_night_mode">Night mode</string>
@@ -289,4 +289,19 @@
     <string name="readiness_channel">Set the “StandBy launch” notification category back to Alert</string>
     <string name="readiness_dnd">Do Not Disturb is on and may block the automatic start</string>
     <string name="readiness_battery">Set Battery usage to “Unrestricted” so OxygenOS keeps the watcher running</string>
+    <string name="weather_drizzle">Drizzle</string>
+    <string name="weather_thunderstorm">Thunderstorm</string>
+    <string name="weather_here">Here</string>
+    <string name="weather_set_location">Choose a city in Settings</string>
+    <string name="weather_allow_location">Allow location in Settings</string>
+    <string name="pref_weather_location">Weather location</string>
+    <string name="weather_location_not_set">Not set — tap to choose</string>
+    <string name="weather_location_device">Approximate location</string>
+    <string name="weather_use_device">Use my approximate location</string>
+    <string name="weather_use_device_summary">City-level accuracy, no GPS. Android asks for permission once.</string>
+    <string name="weather_search_hint">Search for a city</string>
+    <string name="weather_searching">Searching…</string>
+    <string name="weather_search_failed">Couldn’t search. Check your internet connection.</string>
+    <string name="weather_no_results">No matching places</string>
+    <string name="weather_attribution">Weather data by Open-Meteo.com (CC BY 4.0)</string>
 </resources>

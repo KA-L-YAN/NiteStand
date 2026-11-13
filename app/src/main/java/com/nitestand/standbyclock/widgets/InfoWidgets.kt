@@ -27,7 +27,8 @@ import com.nitestand.standbyclock.ui.standby.PanelLabel
 import com.nitestand.standbyclock.ui.standby.PanelValue
 import com.nitestand.standbyclock.ui.theme.StandByStyle
 import com.nitestand.standbyclock.weather.WeatherCondition
-import com.nitestand.standbyclock.weather.WeatherReport
+import com.nitestand.standbyclock.weather.WeatherState
+import com.nitestand.standbyclock.weather.weatherRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -180,10 +181,11 @@ object NextAlarmWidget : StandByWidget<AlarmWidgetData> {
     }
 }
 
-// ---------------------------------------------------------------- Weather (placeholder)
+// ---------------------------------------------------------------- Weather (Open-Meteo)
 
-data class WeatherWidgetData(val report: WeatherReport?, val fahrenheit: Boolean)
+data class WeatherWidgetData(val state: WeatherState, val fahrenheit: Boolean)
 
+/** Current weather for the chosen city or the phone's approximate location. */
 object WeatherWidget : StandByWidget<WeatherWidgetData> {
     override val id = WidgetId.WEATHER
     override val titleRes = R.string.widget_weather
@@ -191,7 +193,7 @@ object WeatherWidget : StandByWidget<WeatherWidgetData> {
     override fun isEnabled(settings: StandBySettings) = settings.showWeatherWidget
 
     override fun observe(sources: WidgetDataSources, settings: StandBySettings): Flow<WeatherWidgetData> =
-        sources.weather.observe().map { WeatherWidgetData(it, usesFahrenheit(sources.timeFormat.locale())) }
+        sources.weather.observe(settings.weatherRequest()).map { WeatherWidgetData(it, usesFahrenheit(sources.timeFormat.locale())) }
 
     private fun usesFahrenheit(locale: Locale) = locale.country in setOf("US", "LR", "MM", "BS", "BZ", "KY", "PW")
 
@@ -200,29 +202,43 @@ object WeatherWidget : StandByWidget<WeatherWidgetData> {
 
     @Composable
     override fun Content(data: WeatherWidgetData, style: StandByStyle, modifier: Modifier) {
-        val report = data.report
-        val condition = report?.condition?.let { stringResource(it.labelRes()) }
-        val sample = stringResource(R.string.weather_sample)
+        val report = data.state.report
         val title = stringResource(R.string.widget_weather)
+        val place = report?.placeName?.takeIf { it.isNotBlank() } ?: if (report != null) stringResource(R.string.weather_here) else title
+        val condition = report?.condition?.let { stringResource(it.labelRes()) }
+        val message = when (data.state.status) {
+            WeatherState.Status.NO_LOCATION -> stringResource(R.string.weather_set_location)
+            WeatherState.Status.NO_PERMISSION -> stringResource(R.string.weather_allow_location)
+            WeatherState.Status.LOADING -> "—"
+            WeatherState.Status.ERROR -> stringResource(R.string.weather_unavailable)
+            WeatherState.Status.OK -> stringResource(R.string.weather_unavailable)
+        }
+        val highLow = report?.let { "H ${format(it.highCelsius, data.fahrenheit)}  L ${format(it.lowCelsius, data.fahrenheit)}" }
         Column(
             modifier.semantics(mergeDescendants = true) {
-                contentDescription = if (report == null) title else
-                    "$title ${format(report.temperatureCelsius, data.fahrenheit)} $condition. $sample"
+                contentDescription = if (report == null) {
+                    "$title. $message"
+                } else {
+                    "$title $place ${format(report.temperatureCelsius, data.fahrenheit)} $condition, $highLow"
+                }
             },
             verticalArrangement = Arrangement.Center,
         ) {
             PanelLabel(
-                if (report?.isSample == true) "${title.uppercase()} · $sample" else title.uppercase(),
+                if (report?.isSample == true) "$place · ${stringResource(R.string.weather_sample)}" else place,
                 style,
                 accent = true,
             )
             if (report == null) {
-                PanelLabel(stringResource(R.string.weather_unavailable), style)
+                PanelLabel(message, style)
             } else {
                 Row(verticalAlignment = Alignment.Bottom) {
                     PanelValue(format(report.temperatureCelsius, data.fahrenheit), style)
                     Spacer(Modifier.width(10.dp))
-                    PanelLabel(condition.orEmpty(), style)
+                    Column {
+                        PanelLabel(condition.orEmpty(), style)
+                        highLow?.let { PanelLabel(it, style) }
+                    }
                 }
             }
         }
@@ -232,8 +248,10 @@ object WeatherWidget : StandByWidget<WeatherWidgetData> {
         WeatherCondition.CLEAR -> R.string.weather_clear
         WeatherCondition.PARTLY_CLOUDY -> R.string.weather_partly_cloudy
         WeatherCondition.CLOUDY -> R.string.weather_cloudy
+        WeatherCondition.FOG -> R.string.weather_fog
+        WeatherCondition.DRIZZLE -> R.string.weather_drizzle
         WeatherCondition.RAIN -> R.string.weather_rain
         WeatherCondition.SNOW -> R.string.weather_snow
-        WeatherCondition.FOG -> R.string.weather_fog
+        WeatherCondition.THUNDERSTORM -> R.string.weather_thunderstorm
     }
 }

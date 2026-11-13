@@ -1,7 +1,17 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: v2.2.1 — automatic launch working on the OnePlus 12R (user-confirmed)
+Phase: v2.3.0 — real weather (Open-Meteo)
+
+## v2.3.0 — real weather
+- Replaced the sample-data weather with Open-Meteo (no API key): OpenMeteoClient (HttpURLConnection),
+  OpenMeteoParser (org.json, WMO code mapping), OpenMeteoWeatherProvider (30-min cache reused across
+  StandBy sessions, 10-min retry, last report kept ≤ 3 h, coarse last-known location).
+- Location: city search (Open-Meteo geocoding; default, no permission) or approximate location
+  (ACCESS_COARSE_LOCATION, requested only when chosen). Coordinates rounded to 2 decimals.
+- New permissions: INTERNET, ACCESS_COARSE_LOCATION (optional). Diagnostics has a Weather section.
+- Not verified: live API calls (Open-Meteo hosts are blocked in the build container); parsing is
+  tested against fixtures in the documented response format. Needs a check on the phone.
 
 ## v2.2.1 — actual root cause (second OnePlus 12R trace)
 - 2.2.0 trace: screen OFF, keyguard locked, landscape, full-screen access granted, channel HIGH —
@@ -113,7 +123,7 @@ Phase: v2.2.1 — automatic launch working on the OnePlus 12R (user-confirmed)
 
 ## Build
 - Debug APK: SUCCESS
-- Release APK 2.2.1 (versionCode 7, R8, v2-signed, same certificate as earlier versions): SUCCESS
+- Release APK 2.3.0 (versionCode 8, R8, v2-signed, same certificate as earlier versions): SUCCESS
 - Unit + screenshot tests: PASSING (see last report; screenshots in app/build/screenshots)
 - Lint: 0 errors, 0 warnings
 - Android tests: compile SUCCESS, not run

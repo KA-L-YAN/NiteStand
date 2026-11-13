@@ -9,6 +9,9 @@ import com.nitestand.standbyclock.display.NightMode
 import com.nitestand.standbyclock.sensors.OrientationSensitivity
 import com.nitestand.standbyclock.standby.ActivationMode
 
+/** Where the weather comes from. */
+enum class WeatherLocationMode { CITY, DEVICE }
+
 /** v1 accent colour. Superseded by per-face [ClockPalette]s; kept so old settings still parse. */
 enum class AccentColor { WHITE, WARM, RED, BLUE, MINT }
 
@@ -47,6 +50,11 @@ data class StandBySettings(
     val showBatteryWidget: Boolean = true,
     val showAlarmWidget: Boolean = true,
     val showWeatherWidget: Boolean = false,
+    /** Weather: a chosen city (default, no location permission) or the phone's approximate location. */
+    val weatherLocationMode: WeatherLocationMode = WeatherLocationMode.CITY,
+    val weatherPlaceName: String = "",
+    val weatherLatitude: Double? = null,
+    val weatherLongitude: Double? = null,
     // Appearance
     val brightness: BrightnessLevel = BrightnessLevel.AUTO,
     val nightMode: NightMode = NightMode.SCHEDULED,

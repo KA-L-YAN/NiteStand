@@ -246,10 +246,21 @@ class ScreenshotTest {
     @Config(qualifiers = "w988dp-h449dp-land-xhdpi")
     fun infoPage() = capture("info_page") {
         androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
+            val realWeather = object : com.nitestand.standbyclock.weather.WeatherProvider {
+                override fun observe(request: com.nitestand.standbyclock.weather.WeatherRequest) = kotlinx.coroutines.flow.flowOf(
+                    com.nitestand.standbyclock.weather.WeatherState(
+                        com.nitestand.standbyclock.weather.WeatherReport(
+                            27.4, 30.1, 18.6, com.nitestand.standbyclock.weather.WeatherCondition.PARTLY_CLOUDY,
+                            isSample = false, placeName = "Hyderabad",
+                        ),
+                        com.nitestand.standbyclock.weather.WeatherState.Status.OK,
+                    ),
+                )
+            }
             com.nitestand.standbyclock.ui.standby.InfoPagePreview(
                 StandBySettings(showWeatherWidget = true),
                 com.nitestand.standbyclock.ui.theme.StandByStyle.forSettings(StandBySettings()),
-                sources,
+                WidgetDataSources(sources.battery, sources.nextAlarm, realWeather, sources.ticker, sources.timeFormat),
             )
         }
     }

@@ -7,7 +7,7 @@
 Put your phone on a charger, turn it sideways on a stand, and it becomes a large, OLED-friendly
 clock with optional side panels (date, battery, next alarm, weather placeholder) — similar in
 concept to iPhone StandBy, built entirely with native Android APIs (Kotlin, Jetpack Compose,
-Material 3). No network access, no accounts. The core app needs no permissions; only the opt-in
+Material 3). No accounts; the network is used only for the optional weather. The core app needs no permissions; only the opt-in
 "Lock-screen auto start" feature asks for notification permissions (see [Permissions](#permissions)).
 
 > Honest summary: Android does **not** let an ordinary app take over a locked phone on its own the
@@ -27,7 +27,7 @@ Material 3). No network access, no accounts. The core app needs no permissions; 
 | Orientation | Physical orientation from the gravity sensor / accelerometer, both landscape directions, configurable tolerance, hysteresis and settle time |
 | Clock faces | 18 StandBy-inspired faces in a live-preview gallery (7 digital, 6 analog, 5 decorative) with per-face colours — swipe up/down on StandBy to switch |
 | Ambient experience | Composed entrance/exit, per-glyph minute transitions, directional face transitions, floating information page, invisible burn-in drift, night environment |
-| Widgets | Clock, Date, Battery (percentage + status), Next alarm, Weather (sample data) |
+| Widgets | Clock, Date, Battery (percentage + status), Next alarm, Weather (real, from Open-Meteo) |
 | Display | Immersive full screen, sensor-landscape (auto 180° flip), keep-screen-on only while active |
 | Brightness | Auto / Low / Medium / High per-window override, ramped smoothly; Night mode (dim red, lowest brightness) Off / Always on / Automatic schedule, with a 2.5 s cross-fade |
 | Burn-in | Slow pixel shift (a few dp every 30–120 s) plus occasional re-anchoring |
@@ -323,7 +323,11 @@ These are platform rules, not missing features. StandBy Clock does not work arou
 7. **Next alarm.** `AlarmManager.getNextAlarmClock()` only reports alarms registered with
    `setAlarmClock()` (Google Clock, Samsung Clock and most alarm apps). Some OEMs also report
    calendar/reminder alarms through it.
-8. **Weather** is sample data from an offline placeholder provider and is labelled "SAMPLE".
+8. **Weather** comes from [Open-Meteo](https://open-meteo.com) (free, no account or API key; data
+   CC BY 4.0, credited in Settings). You choose a city (default, no location permission) or
+   "approximate location" (city-level permission, last known fix, no GPS). Coordinates are rounded
+   to about 1 km before they are sent. The app fetches only while the weather widget is on screen,
+   at most every 30 minutes.
 
 ### Lock-screen limitations
 
@@ -361,6 +365,8 @@ following and only requests runtime consent when you turn it on:
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | Observing the locked phone; no other service type fits |
 | `USE_FULL_SCREEN_INTENT` | Showing StandBy over the lock screen from the background |
 | `RECEIVE_BOOT_COMPLETED` | Restarting the watcher after a reboot (only if enabled) |
+| `INTERNET` | Weather from Open-Meteo (only when the weather widget is on) |
+| `ACCESS_COARSE_LOCATION` | Only if you pick "approximate location" for weather; requested at that moment |
 | `WAKE_LOCK` | Keeping the CPU awake a few seconds at screen-off to read the orientation once and verify the launch (released immediately after) |
 
 Everything else needs no permission:
@@ -437,8 +443,8 @@ interface StandByWidget<T : Any> {
 ```
 
 Add a widget by implementing the interface and adding it to `WidgetRegistry.panelWidgets`.
-Real weather can be added by implementing `WeatherProvider` and swapping it in `AppContainer` —
-the widget and UI stay unchanged.
+Weather is provided by `OpenMeteoWeatherProvider` (`weather/`). Another source can be added by
+implementing `WeatherProvider` and swapping it in `AppContainer`; the widget and UI stay unchanged.
 
 ---
 
@@ -525,7 +531,7 @@ Manual test checklist on a device:
   some OnePlus/Samsung builds) only Mode A is available.
 * Some OEM battery managers kill or hide apps shown over the lock screen; exempt StandBy Clock from
   battery optimisation if StandBy disappears.
-* Weather is placeholder sample data.
+* Weather needs an internet connection; with no connection the last report stays visible for up to 3 hours.
 * Retro seven-segment digits always use Western digits; the other designs use the locale's digits.
 * On tablets / foldables with Android 16+ the system may keep StandBy in portrait.
 * Instrumentation tests are provided but must be run on a device or emulator.

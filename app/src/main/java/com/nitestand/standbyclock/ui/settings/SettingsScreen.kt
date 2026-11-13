@@ -23,6 +23,15 @@ import com.nitestand.standbyclock.ui.motion.Motion
 import com.nitestand.standbyclock.ui.standby.rememberAnimatedStyle
 import com.nitestand.standbyclock.ui.theme.StandByStyle
 import com.nitestand.standbyclock.widgets.WidgetDataSources
+import com.nitestand.standbyclock.appContainer
+import com.nitestand.standbyclock.settings.WeatherLocationMode
+import com.nitestand.standbyclock.weather.OpenMeteoParser
+import com.nitestand.standbyclock.weather.WeatherPlace
+import com.nitestand.standbyclock.weather.WeatherRequest
+import com.nitestand.standbyclock.weather.weatherRequest
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.items
 import com.nitestand.standbyclock.lockscreen.LaunchIssue
 import com.nitestand.standbyclock.lockscreen.LaunchReadiness
 import com.nitestand.standbyclock.lockscreen.StandByNotifications
@@ -199,7 +208,7 @@ private fun LazyListScope.settingsContent(
         SwitchRow(R.string.widget_date, null, s.showDateWidget, enabled = any) { v -> update { it.copy(showDateWidget = v) } }
         SwitchRow(R.string.widget_battery, null, s.showBatteryWidget, enabled = any) { v -> update { it.copy(showBatteryWidget = v) } }
         SwitchRow(R.string.widget_alarm, R.string.pref_alarm_summary, s.showAlarmWidget, enabled = any) { v -> update { it.copy(showAlarmWidget = v) } }
-        SwitchRow(R.string.pref_weather, R.string.pref_weather_summary, s.showWeatherWidget, enabled = any) { v -> update { it.copy(showWeatherWidget = v) } }
+        WeatherRows(s, enabled = any, update = update)
     }
 
     // ---------------------------------------------------------------- Behavior
@@ -569,4 +578,132 @@ private fun openFix(context: android.content.Context, issue: LaunchIssue) {
             )
         }
     }
+}
+
+/** Weather on/off and its location; turning weather on without a location opens the picker. */
+@Composable
+private fun WeatherRows(s: StandBySettings, enabled: Boolean, update: ((StandBySettings) -> StandBySettings) -> Unit) {
+    var picker by rememberSaveable { mutableStateOf(false) }
+    SwitchRow(R.string.pref_weather, R.string.pref_weather_summary, s.showWeatherWidget, enabled = enabled) { v ->
+        update { it.copy(showWeatherWidget = v) }
+        if (v && s.weatherRequest() == WeatherRequest.None) picker = true
+    }
+    if (s.showWeatherWidget) {
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.pref_weather_location)) },
+            supportingContent = {
+                Text(
+                    when (s.weatherRequest()) {
+                        WeatherRequest.None -> stringResource(R.string.weather_location_not_set)
+                        WeatherRequest.DeviceLocation -> stringResource(R.string.weather_location_device)
+                        is WeatherRequest.City -> s.weatherPlaceName
+                    },
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            modifier = Modifier.heightIn(min = 56.dp).selectable(selected = false, enabled = enabled, role = Role.Button) { picker = true },
+        )
+        Text(
+            stringResource(R.string.weather_attribution),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+        )
+    }
+    if (picker) WeatherLocationDialog(onDismiss = { picker = false }, update = update)
+}
+
+private enum class SearchState { IDLE, LOADING, DONE, FAILED }
+
+@Composable
+private fun WeatherLocationDialog(onDismiss: () -> Unit, update: ((StandBySettings) -> StandBySettings) -> Unit) {
+    val context = LocalContext.current
+    val client = remember { context.appContainer.weatherClient }
+    var query by rememberSaveable { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<WeatherPlace>>(emptyList()) }
+    var state by remember { mutableStateOf(SearchState.IDLE) }
+    val useDevice = {
+        update { it.copy(weatherLocationMode = WeatherLocationMode.DEVICE) }
+        onDismiss()
+    }
+    val permission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted -> if (granted) useDevice() }
+
+    LaunchedEffect(query) {
+        val q = query.trim()
+        if (q.length < 2) {
+            results = emptyList()
+            state = SearchState.IDLE
+            return@LaunchedEffect
+        }
+        kotlinx.coroutines.delay(350)
+        state = SearchState.LOADING
+        val found = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { OpenMeteoParser.places(client.search(q)) }
+        }
+        found.onSuccess {
+            results = it
+            state = SearchState.DONE
+        }.onFailure { state = SearchState.FAILED }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.pref_weather_location)) },
+        text = {
+            Column {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.weather_use_device)) },
+                    supportingContent = { Text(stringResource(R.string.weather_use_device_summary)) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier.selectable(selected = false, role = Role.Button) {
+                        val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context, android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        if (granted) useDevice() else permission.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                    },
+                )
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text(stringResource(R.string.weather_search_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                when (state) {
+                    SearchState.LOADING -> Text(stringResource(R.string.weather_searching), Modifier.padding(top = 8.dp))
+                    SearchState.FAILED -> Text(stringResource(R.string.weather_search_failed), Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.error)
+                    SearchState.DONE -> if (results.isEmpty()) Text(stringResource(R.string.weather_no_results), Modifier.padding(top = 8.dp))
+                    SearchState.IDLE -> Unit
+                }
+                LazyColumn(Modifier.heightIn(max = 280.dp)) {
+                    items(results) { place ->
+                        Text(
+                            place.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(selected = false, role = Role.Button) {
+                                    update {
+                                        it.copy(
+                                            weatherLocationMode = WeatherLocationMode.CITY,
+                                            weatherPlaceName = place.name,
+                                            weatherLatitude = place.latitude,
+                                            weatherLongitude = place.longitude,
+                                        )
+                                    }
+                                    onDismiss()
+                                }
+                                .heightIn(min = 48.dp)
+                                .padding(vertical = 12.dp),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
