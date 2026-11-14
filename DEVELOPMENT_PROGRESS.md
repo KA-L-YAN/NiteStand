@@ -1,7 +1,15 @@
 # DEVELOPMENT_PROGRESS
 
 Project: NiteStand — StandBy Clock (Android)
-Phase: v2.3.0 — real weather (Open-Meteo)
+Phase: v2.3.1 — launch safety and unlock behaviour
+
+## v2.3.1 — user report: StandBy opened while using the phone; didn't close on unlock
+- Causes: landscape in a hand passed the 0.5 s check; launches were never cancelled when the user
+  woke the phone mid-launch; nothing closed StandBy after an unlock.
+- Fixes: StillnessDetector (1.5 s in landscape, < 2° wobble); LaunchWatch cancels the launch
+  (no fallback, stays armed) when the screen is turned on by the user or the phone is unlocked;
+  StandByActivity closes on ACTION_USER_PRESENT; swipe up from the bottom edge →
+  KeyguardManager.requestDismissKeyguard (Android's own prompt) → close on success.
 
 ## v2.3.0 — real weather
 - Replaced the sample-data weather with Open-Meteo (no API key): OpenMeteoClient (HttpURLConnection),
@@ -123,7 +131,7 @@ Phase: v2.3.0 — real weather (Open-Meteo)
 
 ## Build
 - Debug APK: SUCCESS
-- Release APK 2.3.0 (versionCode 8, R8, v2-signed, same certificate as earlier versions): SUCCESS
+- Release APK 2.3.1 (versionCode 9, R8, v2-signed, same certificate as earlier versions): SUCCESS
 - Unit + screenshot tests: PASSING (see last report; screenshots in app/build/screenshots)
 - Lint: 0 errors, 0 warnings
 - Android tests: compile SUCCESS, not run

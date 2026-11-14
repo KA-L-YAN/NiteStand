@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.nitestand.standbyclock.appContainer
@@ -23,6 +24,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -174,17 +176,26 @@ class LockScreenWatcherService : Service() {
                     return@launch
                 }
                 var last: DeviceOrientation? = null
+                val stillness = StillnessDetector(holdMs = SCREEN_OFF_SETTLE_MS)
                 val fired = withTimeoutOrNull(WATCH_WINDOW_MS) {
                     appContainer.orientationRepository
-                        .observe(sensitivityConfig.copy(settleMillis = SCREEN_OFF_SETTLE_MS))
-                        .first { orientation ->
+                        .readings(sensitivityConfig)
+                        .first { reading ->
+                            val orientation = reading.orientation
                             if (orientation != last) {
                                 last = orientation
                                 EventLog.log("Watcher: screen off, orientation=$orientation")
                             }
+                            val restingOnStand = stillness.add(
+                                SystemClock.elapsedRealtime(), orientation.isLandscape, reading.rollDeg, reading.elevationDeg,
+                            )
+                            // Non-landscape readings still go to the trigger (they re-arm it);
+                            // landscape only counts once the phone is resting still.
+                            if (orientation.isLandscape && !restingOnStand) return@first false
                             val inputs = base.copy(screenOn = false, orientation = orientation, keyguardLocked = keyguardLocked())
                             val source = trigger.onScreenOff(inputs)
                             if (source != null) {
+                                EventLog.log("Watcher: resting still in landscape for ${SCREEN_OFF_SETTLE_MS} ms")
                                 launch(source, inputs)
                                 true
                             } else {
@@ -211,6 +222,7 @@ class LockScreenWatcherService : Service() {
             ActivationTrace.step("Readiness: ${if (readiness.issues.isEmpty()) "all set" else readiness.issues.joinToString()}")
             trigger.onLaunchRequested()
             val before = StandBySession.resumeCount.value
+            if (userIsUsingPhone()) return@launch cancelled("screen already on")
 
             // 1) Direct start: allowed when Android grants this app a background start.
             try {
@@ -219,9 +231,14 @@ class LockScreenWatcherService : Service() {
             } catch (e: RuntimeException) {
                 ActivationTrace.step("Direct activity start rejected: ${e.javaClass.simpleName}")
             }
-            if (awaitResumed(before, DIRECT_WAIT_MS)) return@launch confirmed()
+            when (watchLaunch(before, DIRECT_WAIT_MS)) {
+                LaunchVerdict.CONFIRMED -> return@launch confirmed()
+                LaunchVerdict.USER_WOKE_PHONE -> return@launch cancelled("user woke the phone")
+                else -> Unit
+            }
 
-            // 2) Full-screen intent.
+            // 2) Full-screen intent (only while the screen is still off).
+            if (userIsUsingPhone()) return@launch cancelled("user woke the phone")
             if (readiness.notificationsAllowed) {
                 val posted = StandByNotifications.postFullScreenLaunch(context)
                 val built = StandByNotifications.buildFullScreenLaunch(context)
@@ -234,12 +251,19 @@ class LockScreenWatcherService : Service() {
                         "Full-screen intent could not be posted"
                     },
                 )
-                if (posted && awaitResumed(before, FSI_WAIT_MS)) return@launch confirmed()
+                if (posted) {
+                    when (watchLaunch(before, FSI_WAIT_MS)) {
+                        LaunchVerdict.CONFIRMED -> return@launch confirmed()
+                        LaunchVerdict.USER_WOKE_PHONE -> return@launch cancelled("user woke the phone")
+                        else -> Unit
+                    }
+                }
             } else {
                 ActivationTrace.step("Full-screen intent skipped: notifications are off")
             }
 
-            // 3) Failure → one quiet, explanatory fallback.
+            // 3) Failure → one quiet, explanatory fallback (never while the user is on the phone).
+            if (userIsUsingPhone()) return@launch cancelled("user woke the phone")
             trigger.onLaunchFailed()
             val reason = readiness.blockingIssue
             ActivationTrace.step("Launch blocked: StandBy did not resume (${reason?.name ?: "system/OEM declined the launch"})")
@@ -258,8 +282,34 @@ class LockScreenWatcherService : Service() {
         ActivationTrace.step("Launch confirmed: StandBy activity resumed")
     }
 
-    private suspend fun awaitResumed(before: Int, timeoutMs: Long): Boolean =
-        withTimeoutOrNull(timeoutMs) { StandBySession.resumeCount.first { it > before } } != null
+    /** True when the screen is on and the keyguard is gone: the user is using the phone. */
+    private fun userIsUsingPhone(): Boolean = isInteractive() && !keyguardLocked()
+
+    /** Abandons the launch without a notification and keeps the activation armed. */
+    private fun cancelled(why: String) {
+        trigger.onLaunchCancelled()
+        StandByNotifications.cancelLaunch(this)
+        ActivationTrace.step("Launch cancelled: $why — StandBy will not open over a phone in use")
+    }
+
+    /** Polls the launch every 100 ms (cheap; at most a few seconds, under the short wake lock). */
+    private suspend fun watchLaunch(before: Int, timeoutMs: Long): LaunchVerdict {
+        val start = SystemClock.elapsedRealtime()
+        var screenOnSince: Long? = null
+        while (true) {
+            val now = SystemClock.elapsedRealtime()
+            screenOnSince = if (isInteractive()) screenOnSince ?: now else null
+            val verdict = LaunchWatch.verdict(
+                resumed = StandBySession.resumeCount.value > before,
+                screenOnForMs = screenOnSince?.let { now - it },
+                keyguardLocked = keyguardLocked(),
+                elapsedMs = now - start,
+                timeoutMs = timeoutMs,
+            )
+            if (verdict != LaunchVerdict.WAITING) return verdict
+            delay(100)
+        }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
@@ -291,7 +341,11 @@ class LockScreenWatcherService : Service() {
         private const val WATCH_WINDOW_MS = 12_000L
 
         /** The orientation must be stable this long (no false triggers while being handled). */
-        private const val SCREEN_OFF_SETTLE_MS = 500L
+        /**
+         * The phone must lie still in landscape this long: a stand holds it motionless, a hand
+         * (watching a video sideways, then pressing power) does not.
+         */
+        private const val SCREEN_OFF_SETTLE_MS = 1_500L
         private const val DIRECT_WAIT_MS = 700L
         private const val FSI_WAIT_MS = 4_000L
 

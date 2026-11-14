@@ -46,7 +46,7 @@
     <string name="tip_generic">If your phone has Settings › Display › Screen saver, choose StandBy Clock there for fully automatic StandBy. Otherwise use Start StandBy and then lock the phone.</string>
 
     <!-- StandBy surface -->
-    <string name="standby_exit_hint">Double-tap to exit</string>
+    <string name="standby_exit_hint">Swipe up to unlock · Double-tap to close</string>
     <string name="a11y_previous_clock_style">Previous clock face</string>
     <string name="a11y_exit_standby">Exit StandBy</string>
     <string name="a11y_next_clock_style">Next clock face</string>
@@ -304,4 +304,5 @@
     <string name="weather_search_failed">Couldn’t search. Check your internet connection.</string>
     <string name="weather_no_results">No matching places</string>
     <string name="weather_attribution">Weather data by Open-Meteo.com (CC BY 4.0)</string>
+    <string name="a11y_unlock">Unlock phone</string>
 </resources>

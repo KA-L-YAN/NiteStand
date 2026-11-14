@@ -77,6 +77,7 @@ class StandByActivity : ComponentActivity() {
         ShortcutManagerCompat.reportShortcutUsed(this, SHORTCUT_ID)
 
         onBackPressedDispatcher.addCallback(this) { exitStandBy() }
+        registerUnlockReceiver()
 
         setContent {
             StandByClockTheme {
@@ -89,6 +90,7 @@ class StandByActivity : ComponentActivity() {
                     onCycleTheme = viewModel::cycleTheme,
                     systemReduceMotion = isSystemReduceMotion(),
                     exitRequested = exitRequested,
+                    onRequestUnlock = ::requestUnlock,
                     inactiveContent = {
                         WaitingContent(
                             state = current,
@@ -119,7 +121,52 @@ class StandByActivity : ComponentActivity() {
         ActivationTrace.step("Activity resumed (${if (keyguard?.isKeyguardLocked == true) "over lock screen" else "unlocked"})")
     }
 
+    private var unlockReceiver: android.content.BroadcastReceiver? = null
+
+    /**
+     * When the user unlocks (fingerprint, PIN, …) StandBy steps aside and the phone opens normally.
+     * StandBy only ever sits above the lock screen; it never keeps an unlocked phone covered.
+     */
+    private fun registerUnlockReceiver() {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context, intent: Intent) {
+                if (intent.action == Intent.ACTION_USER_PRESENT && !isFinishing) {
+                    EventLog.log("StandBy activity: phone unlocked → closing")
+                    finishStandBy()
+                }
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, receiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        unlockReceiver = receiver
+    }
+
+    /**
+     * Swipe up from the bottom edge: ask Android to show its own unlock prompt (fingerprint / PIN).
+     * Security is entirely Android's — StandBy only closes after a successful unlock.
+     */
+    private fun requestUnlock() {
+        val keyguard = getSystemService(android.app.KeyguardManager::class.java)
+        if (keyguard?.isKeyguardLocked != true) {
+            exitStandBy()
+            return
+        }
+        EventLog.log("StandBy activity: unlock requested")
+        keyguard.requestDismissKeyguard(
+            this,
+            object : android.app.KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissSucceeded() {
+                    EventLog.log("StandBy activity: unlocked via prompt → closing")
+                    finishStandBy()
+                }
+            },
+        )
+    }
+
     override fun onDestroy() {
+        unlockReceiver?.let { runCatching { unregisterReceiver(it) } }
+        unlockReceiver = null
         StandBySession.ended(StandBySurface.ACTIVITY)
         super.onDestroy()
     }

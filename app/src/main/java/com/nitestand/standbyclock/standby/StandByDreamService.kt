@@ -65,6 +65,7 @@ class StandByDreamService : DreamService() {
                             wakeUp()
                         },
                         onCycleTheme = controller::cycleTheme,
+                        onRequestUnlock = { wakeUp() },
                         systemReduceMotion = isSystemReduceMotion(),
                         inactiveContent = { DreamIdleContent(current, container.widgetDataSources) },
                     )

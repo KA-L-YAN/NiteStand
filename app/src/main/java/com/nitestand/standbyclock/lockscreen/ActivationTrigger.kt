@@ -96,6 +96,12 @@ class ActivationTrigger {
         phase = ActivationPhase.STANDBY_ACTIVE
     }
 
+    /** The user woke/unlocked the phone during the launch: abandon it, stay armed for the next lock. */
+    fun onLaunchCancelled() {
+        armed = true
+        phase = ActivationPhase.IDLE
+    }
+
     fun onLaunchFailed() {
         phase = ActivationPhase.LAUNCH_FAILED
     }

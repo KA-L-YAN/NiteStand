@@ -88,6 +88,9 @@ private enum class Surface { BLANK, ACTIVE, WAITING }
 
 private const val INACTIVE_HOLD_MS = 800L
 
+/** Height of the bottom "swipe up to unlock" zone. */
+private const val UNLOCK_ZONE_FRACTION = 0.16f
+
 /** The entrance choreography as pure functions of one progress value (unit tested). */
 object EntranceTimeline {
     /** Clock opacity: invisible for the first 5 % (black hold), then a soft ease in. */
@@ -132,6 +135,7 @@ fun StandByScreen(
     systemReduceMotion: Boolean,
     modifier: Modifier = Modifier,
     exitRequested: Boolean = false,
+    onRequestUnlock: () -> Unit = onExit,
     inactiveContent: @Composable () -> Unit,
 ) {
     val settings = state.settings
@@ -184,6 +188,7 @@ fun StandByScreen(
                         motion = motion,
                         exitProgress = { exitProgress.value },
                         onRequestExit = { exiting = true },
+                        onRequestUnlock = onRequestUnlock,
                         onCycleTheme = onCycleTheme,
                         modifier = Modifier.testTag(StandByTestTags.ACTIVE),
                     )
@@ -202,6 +207,7 @@ private fun ActiveStage(
     motion: Motion,
     exitProgress: () -> Float,
     onRequestExit: () -> Unit,
+    onRequestUnlock: () -> Unit,
     onCycleTheme: (Int) -> Unit,
     modifier: Modifier,
 ) {
@@ -311,6 +317,27 @@ private fun ActiveStage(
                 }
             }
 
+            // Bottom edge: swipe up to unlock (Android shows its own fingerprint/PIN prompt).
+            val unlock by rememberUpdatedState(onRequestUnlock)
+            val unlockLabel = stringResource(R.string.a11y_unlock)
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(UNLOCK_ZONE_FRACTION)
+                    .semantics { onClick(label = unlockLabel) { unlock(); true } }
+                    .pointerInput(Unit) {
+                        var total = 0f
+                        detectVerticalDragGestures(
+                            onDragStart = { total = 0f },
+                            onDragEnd = { if (total < -48.dp.toPx()) unlock() },
+                            onVerticalDrag = { change, amount ->
+                                change.consume()
+                                total += amount
+                            },
+                        )
+                    },
+            )
             PageDots(pageCount, pager.currentPage, style, motion, dotsRequest, hintRequest, Modifier.align(Alignment.BottomCenter))
         }
     }

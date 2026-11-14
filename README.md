@@ -57,7 +57,8 @@ for the analysis and the architecture.
 | Change face | Swipe up or down. The clock follows your finger with a soft rubber band, and the new face arrives from the direction you swiped. Changes made in the gallery cross-dissolve. |
 | Change colour | The colours blend over 450 ms. |
 | Pages | Swipe sideways to the information page (date, battery, alarm, sample weather). The page uses a depth transition: fade, recede and half-distance parallax. |
-| Touch | A tap shows the page dots and a faint "Double-tap to exit" for about 3 s. A double tap, Back or the tile fades the stage out, then the window closes with a fade. |
+| Touch | A tap shows the page dots and a faint "Swipe up to unlock · Double-tap to close" for about 3 s. A double tap, Back or the tile fades the stage out, then the window closes with a fade. |
+| Unlock | Swiping up from the bottom edge asks Android for its own fingerprint/PIN prompt. Unlocking by any means (fingerprint, PIN) closes StandBy and opens the phone; StandBy never covers an unlocked phone. |
 | Night | The style interpolates over 2.5 s into a muted red environment with three opacity levels (time ≈ 0.86, secondary ≈ 0.48, metadata ≈ 0.2). Brightness ramps down to the minimum. All motion runs 1.6× slower. |
 | Burn-in | Every 45 s (configurable) the stage drifts at most 14 dp along a deterministic path, with an 8 s ease-in-out (13 s at night). The movement is sub-pixel, so it never visibly steps. |
 
@@ -274,6 +275,10 @@ Back leaves the screen saver, returning to the (still locked) lock screen.
      posted while the lock screen is *awake* as a plain notification instead of opening the app.
      This was confirmed on a OnePlus 12R with the 2.1.0 trace. If you wake the phone on the stand,
      StandBy appears when that screen turns off: press power, or wait for the lock-screen timeout.
+   - The phone must **rest still** in landscape for 1.5 s (roll and tilt wobble under 2°). A
+     stand passes this; a phone held sideways in a hand does not.
+   - If you turn the screen back on yourself while a launch is in progress, the launch is
+     cancelled silently. StandBy never opens over a phone you are using.
    - It fires once per placement. It re-arms only when you unlock, pick the phone up (portrait), or
      unplug, so a StandBy timeout, the power button or exiting never relaunches it.
    - Every step is recorded in Diagnostics › *Last activation attempt*.
